@@ -9,6 +9,7 @@
   <style>
     body {
       font-family: 'Inter', sans-serif;
+      background-color: #f1f5f9;
     }
   </style>
 </head>
@@ -30,7 +31,7 @@
   </div>
 
   <script>
-    const scriptURL = "https://script.google.com/macros/s/AKfycbz_oK4iio9zkKwMbX9wiNvHAOlCcXhD0rBD0ovjz90RKMQZ0KXw8vQ7fuDdS1q19FJnLg/exec";
+    const scriptURL = "https://script.google.com/macros/s/AKfycbxn5v7ZdJqyg4P3xdYsXGaLDrYdlpCA-nXHUyXNRUdym1zgmILluc1GUwgqxxEjEWZ_fg/exec";
 
     document.getElementById("loginForm").addEventListener("submit", async function (e) {
       e.preventDefault();
@@ -40,33 +41,37 @@
 
       statusEl.textContent = "Sedang memproses...";
 
-      const response = await fetch(scriptURL, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "login",
-          payload: {
-            username: username,
-            password: password
+      try {
+        const response = await fetch(scriptURL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "login",
+            payload: {
+              username: username,
+              password: password
+            }
+          }),
+          headers: {
+            "Content-Type": "application/json"
           }
-        }),
-        headers: {
-          "Content-Type": "application/json"
+        });
+
+        const result = await response.json();
+
+        if (result.success === true) {
+          statusEl.classList.remove("text-red-600");
+          statusEl.classList.add("text-green-600");
+          statusEl.textContent = `Selamat datang, ${username} (Role: ${result.role})`;
+          // Redirect ke halaman kasir/dashboard, mis:
+          // window.location.href = "kasir.html";
+        } else {
+          statusEl.classList.remove("text-green-600");
+          statusEl.classList.add("text-red-600");
+          statusEl.textContent = result.message;
         }
-      });
-
-      const result = await response.json();
-
-      if (result.status === "success") {
-        statusEl.classList.remove("text-red-600");
-        statusEl.classList.add("text-green-600");
-        statusEl.textContent = `Selamat datang, ${result.data.username} (Role: ${result.data.role})`;
-
-        // Lanjutkan ke halaman kasir atau dashboard
-        // window.location.href = "kasir.html";
-      } else {
-        statusEl.classList.remove("text-green-600");
+      } catch (error) {
         statusEl.classList.add("text-red-600");
-        statusEl.textContent = result.message;
+        statusEl.textContent = "Gagal login: " + error.message;
       }
     });
   </script>
