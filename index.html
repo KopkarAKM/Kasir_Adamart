@@ -67,12 +67,13 @@
                 <div class="bg-white p-6 rounded-xl shadow-md space-y-6">
                     <div>
                         <h2 class="text-xl font-semibold mb-3">Scan Barcode</h2>
-                        <div id="scanner-wrapper">
-                             <div class="scanner-container bg-gray-200 flex items-center justify-center">
-                                <div id="barcode-scanner"></div>
-                             </div>
-                             <p id="scan-status" class="text-center text-gray-500 mt-2">Arahkan kamera ke barcode. Jika tidak muncul, muat ulang halaman & izinkan kamera.</p>
+                        <div id="scanner-wrapper" class="scanner-container bg-gray-200 flex items-center justify-center">
+                             <div id="barcode-scanner" class="hidden"></div>
+                             <button id="start-scan-btn" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors">
+                                Aktifkan Kamera
+                             </button>
                         </div>
+                        <p id="scan-status" class="text-center text-gray-500 mt-2">Klik tombol untuk memulai scan</p>
                     </div>
                     <div class="text-center text-gray-500 font-semibold">ATAU</div>
                     <div>
@@ -336,6 +337,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalEl = document.getElementById('total');
     const payCashBtn = document.getElementById('pay-cash-btn');
     const payQrisBtn = document.getElementById('pay-qris-btn');
+    const startScanBtn = document.getElementById('start-scan-btn');
+    const barcodeScannerDiv = document.getElementById('barcode-scanner');
+    const scanStatus = document.getElementById('scan-status');
     // Dashboard
     const backToPosBtns = document.querySelectorAll('.back-to-pos-btn');
     const areaFilter = document.getElementById('area-filter');
@@ -410,17 +414,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ action, payload }),
                 redirect: 'follow',
             });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('HTTP Error:', response.status, response.statusText, errorText);
+                showToast(`Error: Gagal terhubung ke server (${response.status}). Periksa URL & deployment.`, true);
+                return false;
+            }
+
             const result = await response.json();
+            
             if (result.status === 'success') {
                 return result; 
             } else {
                 console.error('Google Sheet API Error:', result.message);
-                showToast(`Error: ${result.message}`, true);
+                showToast(`Error dari Skrip: ${result.message}`, true);
                 return false;
             }
         } catch (error) {
-            console.error('Fetch Error:', error);
-            showToast('Gagal terhubung ke Google Sheets.', true);
+            console.error('Fetch/Parsing Error:', error);
+            showToast('Gagal memuat data. Periksa koneksi & pastikan skrip di-deploy dengan benar.', true);
             return false;
         }
     };
@@ -552,7 +565,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             products = JSON.parse(localStorage.getItem('adamartProducts')) || {};
             populateProductSelect();
-            showToast('Gagal memuat data produk dari Google Sheet. Memakai data lokal.', true);
+            showToast('Gagal memuat data dari Google Sheet. Memakai data lokal.', true);
         }
 
         loginLoader.classList.add('hidden');
@@ -578,7 +591,6 @@ document.addEventListener('DOMContentLoaded', () => {
             stockBtn.classList.toggle('hidden', loggedInUser.role !== 'manager');
             
             showPage('pos');
-            startScanner();
         } else {
             loginError.textContent = 'Username atau password salah.';
         }
@@ -586,7 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const handleLogout = () => {
         loggedInUser = null;
-        stopScanner();
+        resetScannerUI();
         showPage('login');
         resetTransaction();
     };
@@ -688,11 +700,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- BARCODE SCANNER ---
     const onScanSuccess = (decodedText) => { addToCart(decodedText); if (navigator.vibrate) navigator.vibrate(100); };
     const onScanFailure = () => {};
+
     const startScanner = () => {
         if (!html5QrcodeScanner) {
             html5QrcodeScanner = new Html5QrcodeScanner("barcode-scanner", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
         }
-        if (html5QrcodeScanner.getState() !== 2) {
+        if (html5QrcodeScanner.getState() !== 2) { // 2 = SCANNING
             html5QrcodeScanner.render(onScanSuccess, onScanFailure).catch(err => {
                 console.error("Gagal memulai scanner:", err);
                 showScanStatus("Gagal memulai kamera. Pastikan Anda memberi izin.", true);
@@ -708,12 +721,19 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn("Scanner tidak bisa dihentikan.", e);
         }
     };
+
+    const resetScannerUI = () => {
+        stopScanner();
+        barcodeScannerDiv.classList.add('hidden');
+        startScanBtn.classList.remove('hidden');
+        scanStatus.textContent = 'Klik tombol untuk memulai scan';
+    };
+
     const showScanStatus = (message, isError = false) => {
-        const scanStatus = document.getElementById('scan-status');
         scanStatus.textContent = message;
         scanStatus.className = isError ? 'text-red-500 font-bold text-center mt-2' : 'text-green-600 font-bold text-center mt-2';
         setTimeout(() => {
-            scanStatus.textContent = 'Arahkan kamera ke barcode. Jika tidak muncul, muat ulang halaman & izinkan kamera.';
+            scanStatus.textContent = 'Arahkan kamera ke barcode';
             scanStatus.className = 'text-gray-500 text-center mt-2';
         }, 3000);
     };
@@ -727,15 +747,24 @@ document.addEventListener('DOMContentLoaded', () => {
     dashboardBtn.addEventListener('click', () => { 
         populateAreaFilter();
         renderDashboard(); 
-        stopScanner(); 
+        resetScannerUI(); 
         showPage('dashboard'); 
     });
     stockBtn.addEventListener('click', () => { 
         renderProductList(); 
-        stopScanner(); 
+        resetScannerUI(); 
         showPage('stock'); 
     });
-    backToPosBtns.forEach(btn => btn.addEventListener('click', () => { showPage('pos'); startScanner(); }));
+    backToPosBtns.forEach(btn => btn.addEventListener('click', () => { 
+        showPage('pos'); 
+    }));
+    
+    startScanBtn.addEventListener('click', () => {
+        startScanBtn.classList.add('hidden');
+        barcodeScannerDiv.classList.remove('hidden');
+        scanStatus.textContent = 'Arahkan kamera ke barcode...';
+        startScanner();
+    });
 
     areaFilter.addEventListener('change', renderDashboard);
 
