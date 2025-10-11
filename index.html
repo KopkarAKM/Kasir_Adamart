@@ -25,7 +25,11 @@
     <div id="app-container" class="w-full max-w-7xl mx-auto p-4">
 
         <!-- Halaman Login -->
-        <div id="login-page" class="bg-white p-8 rounded-xl shadow-lg max-w-sm mx-auto">
+        <div id="login-page" class="bg-white p-8 rounded-xl shadow-lg max-w-sm mx-auto relative">
+             <div id="login-loader" class="hidden absolute inset-0 bg-white bg-opacity-80 flex flex-col items-center justify-center rounded-xl">
+                <div class="loader"></div>
+                <p class="mt-3 text-gray-600 font-medium">Memuat data produk...</p>
+            </div>
             <h1 class="text-3xl font-bold text-center text-blue-600 mb-2">AdaMart</h1>
             <p class="text-center text-gray-500 mb-6">Selamat Datang!</p>
             <div class="space-y-4">
@@ -67,7 +71,7 @@
                              <div class="scanner-container bg-gray-200 flex items-center justify-center">
                                 <div id="barcode-scanner"></div>
                              </div>
-                             <p id="scan-status" class="text-center text-gray-500 mt-2">Arahkan kamera ke barcode</p>
+                             <p id="scan-status" class="text-center text-gray-500 mt-2">Arahkan kamera ke barcode. Jika tidak muncul, muat ulang halaman & izinkan kamera.</p>
                         </div>
                     </div>
                     <div class="text-center text-gray-500 font-semibold">ATAU</div>
@@ -312,6 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
         receipt: document.getElementById('receipt-modal'),
     };
     // Login
+    const loginLoader = document.getElementById('login-loader');
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
     const loginBtn = document.getElementById('login-btn');
@@ -407,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const result = await response.json();
             if (result.status === 'success') {
-                return true;
+                return result; 
             } else {
                 console.error('Google Sheet API Error:', result.message);
                 showToast(`Error: ${result.message}`, true);
@@ -533,6 +538,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- CORE LOGIC ---
 
+    const fetchProductsFromSheet = async () => {
+        loginLoader.classList.remove('hidden');
+        loginBtn.disabled = true;
+
+        const result = await sendToGoogleSheet('get_products');
+
+        if (result && result.data) {
+            products = result.data;
+            saveProducts();
+            populateProductSelect();
+            showToast('Data produk berhasil dimuat!');
+        } else {
+            products = JSON.parse(localStorage.getItem('adamartProducts')) || {};
+            populateProductSelect();
+            showToast('Gagal memuat data produk dari Google Sheet. Memakai data lokal.', true);
+        }
+
+        loginLoader.classList.add('hidden');
+        loginBtn.disabled = false;
+    };
+
     const handleLogin = () => {
         const username = usernameInput.value.trim();
         const password = passwordInput.value;
@@ -597,7 +623,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetTransaction = () => {
         cart = [];
         renderCart();
-        populateProductSelect();
     };
 
     const finalizeTransaction = async (paymentMethod) => {
@@ -614,17 +639,15 @@ document.addEventListener('DOMContentLoaded', () => {
             timestamp: new Date().toISOString(),
             items: cart,
             subtotal, tax, total, paymentMethod,
-            area: loggedInUser.area || 'N/A' // Catat area transaksi
+            area: loggedInUser.area || 'N/A'
         };
         
-        // Note: Google Apps Script Anda perlu diupdate untuk bisa menerima dan menulis kolom 'area'
-        const success = await sendToGoogleSheet('record_sale', transaction);
+        const result = await sendToGoogleSheet('record_sale', transaction);
         
-        if(success) {
+        if(result) {
             salesHistory.push(transaction);
             saveSalesHistory();
             
-            // Kurangi stok lokal
             cart.forEach(item => {
                 products[item.barcode].stock -= item.quantity;
             });
@@ -633,6 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hideModals();
             showReceipt(transaction);
             resetTransaction();
+            populateProductSelect();
         } else {
             showToast("Gagal mencatat penjualan. Coba lagi.", true);
         }
@@ -669,16 +693,19 @@ document.addEventListener('DOMContentLoaded', () => {
             html5QrcodeScanner = new Html5QrcodeScanner("barcode-scanner", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
         }
         if (html5QrcodeScanner.getState() !== 2) {
-             html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure).catch(err => {
+                console.error("Gagal memulai scanner:", err);
+                showScanStatus("Gagal memulai kamera. Pastikan Anda memberi izin.", true);
+            });
         }
     };
     const stopScanner = () => {
         try {
-            if (html5QrcodeScanner && html5QrcodeScanner.getState() === 2) { // 2 = SCANNING
-                 html5QrcodeScanner.clear().catch(err => console.error("Failed to clear scanner", err));
+            if (html5QrcodeScanner && html5QrcodeScanner.getState() === 2) {
+                 html5QrcodeScanner.clear().catch(err => console.error("Gagal membersihkan scanner", err));
             }
         } catch (e) {
-            console.warn("Scanner could not be stopped.", e);
+            console.warn("Scanner tidak bisa dihentikan.", e);
         }
     };
     const showScanStatus = (message, isError = false) => {
@@ -686,9 +713,9 @@ document.addEventListener('DOMContentLoaded', () => {
         scanStatus.textContent = message;
         scanStatus.className = isError ? 'text-red-500 font-bold text-center mt-2' : 'text-green-600 font-bold text-center mt-2';
         setTimeout(() => {
-            scanStatus.textContent = 'Arahkan kamera ke barcode';
+            scanStatus.textContent = 'Arahkan kamera ke barcode. Jika tidak muncul, muat ulang halaman & izinkan kamera.';
             scanStatus.className = 'text-gray-500 text-center mt-2';
-        }, 2000);
+        }, 3000);
     };
 
     // --- EVENT LISTENERS ---
@@ -703,7 +730,11 @@ document.addEventListener('DOMContentLoaded', () => {
         stopScanner(); 
         showPage('dashboard'); 
     });
-    stockBtn.addEventListener('click', () => { renderProductList(); stopScanner(); showPage('stock'); });
+    stockBtn.addEventListener('click', () => { 
+        renderProductList(); 
+        stopScanner(); 
+        showPage('stock'); 
+    });
     backToPosBtns.forEach(btn => btn.addEventListener('click', () => { showPage('pos'); startScanner(); }));
 
     areaFilter.addEventListener('change', renderDashboard);
@@ -773,10 +804,9 @@ document.addEventListener('DOMContentLoaded', () => {
             quantity: parseInt(stockQuantity.value)
         };
 
-        const success = await sendToGoogleSheet('update_stock', payload);
+        const result = await sendToGoogleSheet('update_stock', payload);
         
-        if (success) {
-            // Update local product data
+        if (result) {
             if (products[payload.barcode]) {
                 products[payload.barcode].stock += payload.quantity;
                 products[payload.barcode].name = payload.name;
@@ -811,9 +841,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INITIALIZATION ---
     const initializeApp = () => {
-        populateProductSelect();
         renderCart();
         showPage('login');
+        fetchProductsFromSheet();
     };
 
     initializeApp();
