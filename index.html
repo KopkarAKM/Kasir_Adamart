@@ -392,16 +392,15 @@ document.addEventListener('DOMContentLoaded', () => {
         toast.textContent = message;
         toast.style.backgroundColor = isError ? '#ef4444' : '#22c55e';
         toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3000);
+        setTimeout(() => toast.classList.remove('show'), 4000);
     };
 
     const saveSalesHistory = () => localStorage.setItem('adamartSales', JSON.stringify(salesHistory));
     const saveProducts = () => localStorage.setItem('adamartProducts', JSON.stringify(products));
 
     const sendToGoogleSheet = async (action, payload) => {
-        if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("GANTI_DENGAN_URL")) {
-            console.error("Google Script URL is not set or is a placeholder.");
-            showToast("URL Google Script belum diatur!", true);
+        if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("GANTI_DENGAN")) {
+            showToast("URL Google Script belum diatur di dalam kode!", true);
             return false;
         }
         try {
@@ -442,6 +441,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const populateProductSelect = () => {
         productSelect.innerHTML = '<option value="">-- Pilih Produk --</option>';
+        if (Object.keys(products).length === 0) {
+            addManualBtn.disabled = true;
+            productSelect.disabled = true;
+            return;
+        }
+        addManualBtn.disabled = false;
+        productSelect.disabled = false;
         Object.entries(products).forEach(([barcode, product]) => {
             const option = document.createElement('option');
             option.value = barcode;
