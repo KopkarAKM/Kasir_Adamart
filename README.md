@@ -1,12 +1,13 @@
-# AdaMart — GitHub Pages Package
+# AdaMart — Minimal GitHub Pages Package
 
-Drag & drop isi folder ini ke repository GitHub kamu lalu aktifkan **Settings → Pages** (branch: `main`, folder: `/ (root)`).
+Langsung **drag & drop** file ke repository GitHub kamu (root), lalu aktifkan **Settings → Pages** (branch: `main`, folder: `/(root)`).
 
-## Struktur
-- `index.html` — Landing + Aplikasi POS (React via CDN, tanpa build)
-- `assets/logo-*.svg` — logo vektor
+## File
+- `index.html` — Halaman login + tes koneksi ke Google Apps Script.
 
 ## Konfigurasi
-Ganti `GOOGLE_SCRIPT_URL` di `index.html` dengan Web App Google Apps Script milik kamu.
+- URL Google Script sudah diisi di dalam `index.html` pada variabel `GOOGLE_SCRIPT_URL`.
 
-Selamat mencoba!
+## Uji Koneksi
+- Isi username & password lalu klik **Login** → akan mencoba `action: get_products`.
+- Jika sukses, akan muncul alert **“Koneksi ke Google Sheet berhasil!”**.
