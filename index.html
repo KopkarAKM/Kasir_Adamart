@@ -431,7 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const populateProductSelect = () => {
         productSelect.innerHTML = '<option value="">-- Pilih Produk --</option>';
-        if (Object.keys(products).length === 0) {
+        if (Object.keys(products).length === 0 || !loggedInUser) { // Ditambahkan pengecekan loggedInUser
             addManualBtn.disabled = true;
             productSelect.disabled = true;
             return;
@@ -570,7 +570,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Gagal memuat data dari Google Sheet. Memakai data lokal.', true);
         }
         
-        populateProductSelect();
         loginLoader.classList.add('hidden');
         loginBtn.disabled = false;
     };
@@ -593,7 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dashboardBtn.classList.toggle('hidden', loggedInUser.role !== 'manager');
             stockBtn.classList.toggle('hidden', loggedInUser.role !== 'manager');
             
-            populateProductSelect(); // Populate products based on logged in user
+            populateProductSelect();
             showPage('pos');
         } else {
             loginError.textContent = 'Username atau password salah.';
@@ -817,7 +816,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     stockBarcode.addEventListener('change', () => {
-        const product = products[payload.barcode];
+        const product = products[stockBarcode.value];
         if (product) {
             stockName.value = product.name;
             stockPrice.value = product.price;
