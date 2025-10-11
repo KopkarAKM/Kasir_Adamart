@@ -1,69 +1,63 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AdaMart POS</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Helvetica, Arial, sans-serif; background: #f7f8fa; }
-    .hidden { display: none; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdaMart POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .container { max-width: 600px; margin: 5rem auto; padding: 2rem; background: white; border-radius: 1rem; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .hidden { display: none; }
+    </style>
 </head>
-<body class="flex items-center justify-center min-h-screen">
-  <div id="app" class="bg-white shadow-xl p-8 rounded-xl max-w-lg w-full">
-    <h1 class="text-3xl font-bold text-center text-blue-600 mb-4">AdaMart POS</h1>
-    <p class="text-gray-500 text-center mb-6">Login ke sistem kasir</p>
-    <div class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Username</label>
-        <input id="username" type="text" placeholder="Owner / kasir1" class="w-full border border-gray-300 rounded-md p-2 mt-1">
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Password</label>
-        <input id="password" type="password" placeholder="••••••" class="w-full border border-gray-300 rounded-md p-2 mt-1">
-      </div>
-      <button id="loginBtn" class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition">Login</button>
+<body>
+    <div class="container">
+        <h1 class="text-2xl font-bold mb-4 text-center">Login AdaMart</h1>
+        <form id="loginForm" class="space-y-4">
+            <input type="text" id="username" placeholder="Username" class="w-full px-4 py-2 border rounded" required>
+            <input type="password" id="password" placeholder="Password" class="w-full px-4 py-2 border rounded" required>
+            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Login</button>
+        </form>
+        <div id="message" class="text-center text-red-500 mt-4 hidden"></div>
     </div>
-    <p id="errorMsg" class="text-red-500 text-center mt-3 hidden">Username atau password salah</p>
-  </div>
 
-  <script>
-    // URL Google Apps Script kamu:
-    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz_oK4iio9zkKwMbX9wiNvHAOlCcXhD0rBD0ovjz90RKMQZ0KXw8vQ7fuDdS1q19FJnLg/exec';
+    <script>
+        const loginUrl = "https://script.google.com/macros/s/AKfycbz_oK4iio9zkKwMbX9wiNvHAOlCcXhD0rBD0ovjz90RKMQZ0KXw8vQ7fuDdS1q19FJnLg/exec";
+        const loginForm = document.getElementById("loginForm");
+        const message = document.getElementById("message");
 
-    document.getElementById('loginBtn').addEventListener('click', async () => {
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value.trim();
-      const errorMsg = document.getElementById('errorMsg');
+        loginForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
 
-      if (!username || !password) {
-        errorMsg.textContent = 'Isi username dan password terlebih dahulu';
-        errorMsg.classList.remove('hidden');
-        return;
-      }
-
-      try {
-        const res = await fetch(GOOGLE_SCRIPT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'get_products' })
+            try {
+                const res = await fetch(loginUrl, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        action: "login",
+                        payload: { username, password }
+                    }),
+                    headers: { "Content-Type": "application/json" }
+                });
+                const data = await res.json();
+                if (data.status === "success") {
+                    message.classList.remove("text-red-500");
+                    message.classList.add("text-green-600");
+                    message.textContent = data.message + " (role: " + data.role + ")";
+                    message.classList.remove("hidden");
+                } else {
+                    message.textContent = data.message;
+                    message.classList.remove("hidden");
+                }
+            } catch (err) {
+                message.textContent = "Gagal login: " + err.message;
+                message.classList.remove("hidden");
+            }
         });
-        const data = await res.json();
-        if (data.status === 'success') {
-          alert('Koneksi ke Google Sheet berhasil!');
-          errorMsg.classList.add('hidden');
-        } else {
-          errorMsg.textContent = 'Gagal terhubung ke server';
-          errorMsg.classList.remove('hidden');
-        }
-      } catch (err) {
-        console.error(err);
-        errorMsg.textContent = 'Terjadi kesalahan koneksi';
-        errorMsg.classList.remove('hidden');
-      }
-    });
-  </script>
+    </script>
 </body>
 </html>
