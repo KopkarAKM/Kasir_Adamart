@@ -49,7 +49,7 @@
         <div id="pos-page" class="hidden">
             <header class="bg-white p-4 rounded-xl shadow-md mb-6 flex justify-between items-center flex-wrap gap-2">
                 <div>
-                    <h1 class="text-2xl font-bold text-blue-600">AdaMart Kasir</h1>
+                    <h1 class="text-2xl font-bold text-blue-600">AdaMart</h1>
                     <p class="text-gray-500">Login sebagai: <span id="user-role" class="font-semibold"></span> (<span id="user-area" class="font-medium"></span>)</p>
                 </div>
                 <div>
@@ -60,7 +60,7 @@
                 </div>
             </header>
             
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div id="kasir-view" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                  <!-- Kolom Kiri: Input Manual -->
                 <div class="bg-white p-6 rounded-xl shadow-md space-y-6 lg:col-span-1">
                     <div>
@@ -100,6 +100,10 @@
                     </div>
                 </div>
             </div>
+            <div id="owner-view" class="hidden text-center p-10 bg-white rounded-xl shadow-md">
+                <h2 class="text-2xl font-bold text-gray-800">Selamat Datang, Owner!</h2>
+                <p class="text-gray-600 mt-2">Gunakan menu di atas untuk mengelola stok, melihat dashboard, atau melapor barang.</p>
+            </div>
         </div>
         
         <!-- Halaman Dashboard -->
@@ -109,12 +113,12 @@
                  <div class="flex items-center gap-4">
                     <div id="area-filter-container">
                         <label for="area-filter" class="text-sm font-medium text-gray-700">Filter Area:</label>
-                        <select id="area-filter" class="ml-2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        <select id="area-filter" class="ml-2 rounded-md border-gray-300 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                             <!-- Opsi filter akan diisi oleh JavaScript -->
                         </select>
                     </div>
                     <button id="back-from-dashboard-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300 transition-colors">
-                        Kembali ke Kasir
+                        Kembali
                     </button>
                  </div>
             </header>
@@ -157,7 +161,7 @@
             <header class="bg-white p-4 rounded-xl shadow-md mb-6 flex justify-between items-center">
                  <h1 class="text-2xl font-bold text-blue-600">Manajemen Stok</h1>
                  <button id="back-from-stock-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300 transition-colors">
-                    Kembali ke Kasir
+                    Kembali
                  </button>
             </header>
 
@@ -220,7 +224,7 @@
             <header class="bg-white p-4 rounded-xl shadow-md mb-6 flex justify-between items-center">
                  <h1 class="text-2xl font-bold text-blue-600">Lapor Barang Rusak / Expired</h1>
                  <button id="back-from-report-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300 transition-colors">
-                    Kembali ke Kasir
+                    Kembali
                  </button>
             </header>
             <div class="bg-white p-8 rounded-xl shadow-md max-w-lg mx-auto">
@@ -347,6 +351,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // POS
     const userRoleSpan = document.getElementById('user-role');
     const userAreaSpan = document.getElementById('user-area');
+    const kasirView = document.getElementById('kasir-view');
+    const ownerView = document.getElementById('owner-view');
     const stockBtn = document.getElementById('stock-btn');
     const dashboardBtn = document.getElementById('dashboard-btn');
     const logoutBtn = document.getElementById('logout-btn');
@@ -626,12 +632,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             userRoleSpan.textContent = username;
             userAreaSpan.textContent = loggedInUser.area || 'Semua Area';
-
+            
+            kasirView.classList.toggle('hidden', loggedInUser.role === 'manager');
+            ownerView.classList.toggle('hidden', loggedInUser.role !== 'manager');
             dashboardBtn.classList.toggle('hidden', loggedInUser.role !== 'manager');
             stockBtn.classList.toggle('hidden', loggedInUser.role !== 'manager');
             
             populateProductSelects();
-            showPage('pos');
+            
+            if(loggedInUser.role === 'manager') {
+                showPage('dashboard');
+            } else {
+                showPage('pos');
+            }
         } else {
             loginError.textContent = 'Username atau password salah.';
         }
@@ -758,7 +771,13 @@ document.addEventListener('DOMContentLoaded', () => {
         showPage('report');
     });
 
-    backFromDashboardBtn.addEventListener('click', () => showPage('pos'));
+    backFromDashboardBtn.addEventListener('click', () => {
+        if (loggedInUser.role === 'manager') {
+            showPage('dashboard');
+        } else {
+            showPage('pos');
+        }
+    });
     backFromStockBtn.addEventListener('click', () => showPage('pos'));
     backFromReportBtn.addEventListener('click', () => showPage('pos'));
     
