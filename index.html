@@ -53,7 +53,6 @@
                     <p class="text-gray-500">Login sebagai: <span id="user-role" class="font-semibold"></span> (<span id="user-area" class="font-medium"></span>)</p>
                 </div>
                 <div>
-                    <button id="report-item-btn" class="bg-orange-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-orange-600 transition-colors">Lapor Barang</button>
                     <button id="stock-btn" class="hidden bg-yellow-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-yellow-600 transition-colors">Stok</button>
                     <button id="dashboard-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300 transition-colors">Dashboard</button>
                     <button id="logout-btn" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-600 transition-colors">Logout</button>
@@ -84,6 +83,14 @@
                     </div>
                     <div class="border-t pt-4 mt-4">
                         <div class="space-y-2 text-lg">
+                            <div class="flex justify-between">
+                                <span>Subtotal</span>
+                                <span id="subtotal">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Pajak (11%)</span>
+                                <span id="tax">Rp 0</span>
+                            </div>
                             <div class="flex justify-between font-bold text-2xl text-blue-600">
                                 <span>Total</span>
                                 <span id="total">Rp 0</span>
@@ -214,41 +221,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Halaman Laporan Barang -->
-        <div id="report-page" class="hidden">
-            <header class="bg-white p-4 rounded-xl shadow-md mb-6 flex justify-between items-center">
-                 <h1 class="text-2xl font-bold text-blue-600">Lapor Barang Rusak / Expired</h1>
-                 <button class="back-to-pos-btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300 transition-colors">
-                    Kembali ke Kasir
-                 </button>
-            </header>
-            <div class="bg-white p-8 rounded-xl shadow-md max-w-lg mx-auto">
-                <form id="report-form" class="space-y-4">
-                    <div>
-                         <label for="report-product-select" class="block text-sm font-medium text-gray-700">Pilih Produk</label>
-                         <select id="report-product-select" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                           <!-- Opsi produk akan diisi oleh JavaScript -->
-                         </select>
-                    </div>
-                    <div>
-                         <label for="report-quantity" class="block text-sm font-medium text-gray-700">Jumlah</label>
-                         <input type="number" id="report-quantity" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" min="1">
-                    </div>
-                    <div>
-                         <label for="report-reason" class="block text-sm font-medium text-gray-700">Keterangan</label>
-                         <select id="report-reason" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                            <option value="Expired">Expired</option>
-                            <option value="Rusak">Rusak</option>
-                         </select>
-                    </div>
-                    <button type="submit" class="w-full bg-orange-500 text-white font-bold py-2 px-4 rounded-md hover:bg-orange-600 flex items-center justify-center gap-2">
-                        <span id="report-btn-text">Kirim Laporan</span>
-                        <div id="report-loader" class="loader hidden"></div>
-                    </button>
-                </form>
-            </div>
-        </div>
     </div>
 
     <!-- Modal-modal -->
@@ -320,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let products = JSON.parse(localStorage.getItem('adamartProducts')) || {};
 
     const users = {
-        'Owner': { password: '0WnerPayBo55', role: 'manager' },
+        'Owner': { password: '0WnerPayBo55', role: 'manager' }, // 'manager' has full access
         'kasir1': { password: 'password1', role: 'staff', area: 'Area Kasir 1' },
         'kasir2': { password: 'password2', role: 'staff', area: 'Area Kasir 2' },
         'kasir3': { password: 'password3', role: 'staff', area: 'Area Kasir 3' }
@@ -332,7 +304,6 @@ document.addEventListener('DOMContentLoaded', () => {
         pos: document.getElementById('pos-page'),
         dashboard: document.getElementById('dashboard-page'),
         stock: document.getElementById('stock-page'),
-        report: document.getElementById('report-page'),
     };
     const modals = {
         payment: document.getElementById('payment-modal'),
@@ -350,19 +321,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const stockBtn = document.getElementById('stock-btn');
     const dashboardBtn = document.getElementById('dashboard-btn');
     const logoutBtn = document.getElementById('logout-btn');
-    const reportItemBtn = document.getElementById('report-item-btn');
     const productSelect = document.getElementById('product-select');
     const addManualBtn = document.getElementById('add-manual-btn');
     const cartItemsDiv = document.getElementById('cart-items');
     const emptyCartMsg = document.getElementById('empty-cart-msg');
+    const subtotalEl = document.getElementById('subtotal');
+    const taxEl = document.getElementById('tax');
     const totalEl = document.getElementById('total');
     const payCashBtn = document.getElementById('pay-cash-btn');
     const payQrisBtn = document.getElementById('pay-qris-btn');
-    
-    // Back Buttons - Explicitly selected
-    const backToPosBtns = document.querySelectorAll('.back-to-pos-btn');
-
     // Dashboard
+    const backToPosBtns = document.querySelectorAll('.back-to-pos-btn');
     const areaFilter = document.getElementById('area-filter');
     const totalRevenueEl = document.getElementById('total-revenue');
     const totalTransactionsEl = document.getElementById('total-transactions');
@@ -378,13 +347,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const stockQuantity = document.getElementById('stock-quantity');
     const stockBtnText = document.getElementById('stock-btn-text');
     const stockLoader = document.getElementById('stock-loader');
-    // Report Page
-    const reportForm = document.getElementById('report-form');
-    const reportProductSelect = document.getElementById('report-product-select');
-    const reportQuantityInput = document.getElementById('report-quantity');
-    const reportReasonSelect = document.getElementById('report-reason');
-    const reportBtnText = document.getElementById('report-btn-text');
-    const reportLoader = document.getElementById('report-loader');
     // Modals
     const closeModalBtns = document.querySelectorAll('.close-modal-btn');
     const paymentModalTitle = document.getElementById('payment-modal-title');
@@ -467,11 +429,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- RENDER FUNCTIONS ---
     
-    const populateProductSelects = () => {
+    const populateProductSelect = () => {
         productSelect.innerHTML = '<option value="">-- Pilih Produk --</option>';
-        reportProductSelect.innerHTML = '<option value="">-- Pilih Produk --</option>';
-
-        if (Object.keys(products).length === 0 || !loggedInUser) {
+        if (Object.keys(products).length === 0 || !loggedInUser) { // Ditambahkan pengecekan loggedInUser
             addManualBtn.disabled = true;
             productSelect.disabled = true;
             return;
@@ -485,8 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const option = document.createElement('option');
                 option.value = barcode;
                 option.textContent = `${product.name} (Stok: ${stock})`;
-                productSelect.appendChild(option.cloneNode(true));
-                reportProductSelect.appendChild(option.cloneNode(true));
+                productSelect.appendChild(option);
             }
         });
     };
@@ -521,7 +480,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateTotals = () => {
-        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const tax = subtotal * 0.11;
+        const total = subtotal + tax;
+        
+        subtotalEl.textContent = formatCurrency(subtotal);
+        taxEl.textContent = formatCurrency(tax);
         totalEl.textContent = formatCurrency(total);
     };
     
@@ -628,7 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dashboardBtn.classList.toggle('hidden', loggedInUser.role !== 'manager');
             stockBtn.classList.toggle('hidden', loggedInUser.role !== 'manager');
             
-            populateProductSelects();
+            populateProductSelect();
             showPage('pos');
         } else {
             loginError.textContent = 'Username atau password salah.';
@@ -684,9 +648,9 @@ document.addEventListener('DOMContentLoaded', () => {
         paymentBtnText.classList.add('hidden');
         loader.classList.remove('hidden');
 
-        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const subtotal = total;
-        const tax = 0;
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const tax = subtotal * 0.11;
+        const total = subtotal + tax;
 
         const transaction = {
             timestamp: new Date().toISOString(),
@@ -709,7 +673,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hideModals();
             showReceipt(transaction);
             resetTransaction();
-            populateProductSelects();
+            populateProductSelect();
         } else {
             showToast("Gagal mencatat penjualan. Coba lagi.", true);
         }
@@ -727,6 +691,8 @@ document.addEventListener('DOMContentLoaded', () => {
             receipt += `${item.name}\n  ${item.quantity} x ${formatCurrency(item.price)}`.padEnd(32, ' ') + `${itemTotal}\n`;
         });
         receipt += `--------------------------------\n`;
+        receipt += `Subtotal`.padEnd(20, ' ') + `: ${formatCurrency(transaction.subtotal)}\n`;
+        receipt += `Pajak (11%)`.padEnd(20, ' ') + `: ${formatCurrency(transaction.tax)}\n`;
         receipt += `TOTAL`.padEnd(20, ' ') + `: ${formatCurrency(transaction.total)}\n\n`;
         receipt += `Metode Bayar: ${transaction.paymentMethod}\n\n   Terima Kasih!\n`;
         
@@ -751,14 +717,9 @@ document.addEventListener('DOMContentLoaded', () => {
         renderProductList(); 
         showPage('stock'); 
     });
-    reportItemBtn.addEventListener('click', () => {
-        populateProductSelects();
-        showPage('report');
-    });
-
-    backToPosBtns.forEach(btn => {
-        btn.addEventListener('click', () => showPage('pos'));
-    });
+    backToPosBtns.forEach(btn => btn.addEventListener('click', () => { 
+        showPage('pos'); 
+    }));
     
     areaFilter.addEventListener('change', renderDashboard);
 
@@ -779,7 +740,7 @@ document.addEventListener('DOMContentLoaded', () => {
     closeModalBtns.forEach(btn => btn.addEventListener('click', hideModals));
     
     payCashBtn.addEventListener('click', () => {
-        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) * 1.11;
         paymentModalTitle.textContent = "Pembayaran Tunai";
         cashTotalEl.textContent = formatCurrency(total);
         amountPaidInput.value = '';
@@ -791,7 +752,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     payQrisBtn.addEventListener('click', () => {
-        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) * 1.11;
         paymentModalTitle.textContent = "Pembayaran QRIS";
         qrisTotalEl.textContent = `Total: ${formatCurrency(total)}`;
         cashPaymentContent.style.display = 'none';
@@ -800,7 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     amountPaidInput.addEventListener('input', () => {
-        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) * 1.11;
         const amountPaid = parseFloat(amountPaidInput.value) || 0;
         const change = amountPaid - total;
         if (change >= 0) {
@@ -852,47 +813,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         stockBtnText.classList.remove('hidden');
         stockLoader.classList.add('hidden');
-    });
-    
-    reportForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        reportBtnText.classList.add('hidden');
-        reportLoader.classList.remove('hidden');
-
-        const barcode = reportProductSelect.value;
-        const product = products[barcode];
-        const quantity = parseInt(reportQuantityInput.value);
-
-        if (!product || !quantity) {
-            showToast("Harap pilih produk dan isi jumlah.", true);
-            reportBtnText.classList.remove('hidden');
-            reportLoader.classList.add('hidden');
-            return;
-        }
-        
-        const payload = {
-            barcode: barcode,
-            name: product.name,
-            quantity: quantity,
-            reason: reportReasonSelect.value,
-            area: loggedInUser.area
-        };
-
-        const result = await sendToGoogleSheet('report_item', payload);
-
-        if (result) {
-            // Update local stock
-            products[barcode].stocks[loggedInUser.area] -= quantity;
-            saveProducts();
-            showToast("Laporan berhasil dikirim!");
-            reportForm.reset();
-            populateProductSelects(); // Refresh dropdowns with new stock
-        } else {
-            showToast("Gagal mengirim laporan. Coba lagi.", true);
-        }
-
-        reportBtnText.classList.remove('hidden');
-        reportLoader.classList.add('hidden');
     });
 
     stockBarcode.addEventListener('change', () => {
