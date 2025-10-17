@@ -113,7 +113,7 @@
                             <!-- Opsi filter akan diisi oleh JavaScript -->
                         </select>
                     </div>
-                    <button id="back-from-dashboard-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300 transition-colors">
+                    <button class="back-to-pos-btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300 transition-colors">
                         Kembali ke Kasir
                     </button>
                  </div>
@@ -156,7 +156,7 @@
         <div id="stock-page" class="hidden">
             <header class="bg-white p-4 rounded-xl shadow-md mb-6 flex justify-between items-center">
                  <h1 class="text-2xl font-bold text-blue-600">Manajemen Stok</h1>
-                 <button id="back-from-stock-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300 transition-colors">
+                 <button class="back-to-pos-btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300 transition-colors">
                     Kembali ke Kasir
                  </button>
             </header>
@@ -219,7 +219,7 @@
         <div id="report-page" class="hidden">
             <header class="bg-white p-4 rounded-xl shadow-md mb-6 flex justify-between items-center">
                  <h1 class="text-2xl font-bold text-blue-600">Lapor Barang Rusak / Expired</h1>
-                 <button id="back-from-report-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300 transition-colors">
+                 <button class="back-to-pos-btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300 transition-colors">
                     Kembali ke Kasir
                  </button>
             </header>
@@ -358,10 +358,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalEl = document.getElementById('total');
     const payCashBtn = document.getElementById('pay-cash-btn');
     const payQrisBtn = document.getElementById('pay-qris-btn');
-    // Dashboard & Stok Page Buttons
-    const backFromDashboardBtn = document.getElementById('back-from-dashboard-btn');
-    const backFromStockBtn = document.getElementById('back-from-stock-btn');
-    const backFromReportBtn = document.getElementById('back-from-report-btn');
+    // Back Buttons
+    const backToPosBtns = document.querySelectorAll('.back-to-pos-btn');
+    // Dashboard
     const areaFilter = document.getElementById('area-filter');
     const totalRevenueEl = document.getElementById('total-revenue');
     const totalTransactionsEl = document.getElementById('total-transactions');
@@ -755,9 +754,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showPage('report');
     });
 
-    backFromDashboardBtn.addEventListener('click', () => showPage('pos'));
-    backFromStockBtn.addEventListener('click', () => showPage('pos'));
-    backFromReportBtn.addEventListener('click', () => showPage('pos'));
+    backToPosBtns.forEach(btn => {
+        btn.addEventListener('click', () => showPage('pos'));
+    });
     
     areaFilter.addEventListener('change', renderDashboard);
 
