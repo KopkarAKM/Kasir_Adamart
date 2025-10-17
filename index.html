@@ -360,7 +360,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const payQrisBtn = document.getElementById('pay-qris-btn');
     
     // Back Buttons
-    const backToPosBtns = document.querySelectorAll('.back-to-pos-btn');
+    const backFromDashboardBtn = document.getElementById('back-from-dashboard-btn');
+    const backFromStockBtn = document.getElementById('back-from-stock-btn');
+    const backFromReportBtn = document.getElementById('back-from-report-btn');
 
     // Dashboard
     const areaFilter = document.getElementById('area-filter');
@@ -756,9 +758,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showPage('report');
     });
 
-    backToPosBtns.forEach(btn => {
-        btn.addEventListener('click', () => showPage('pos'));
-    });
+    backFromDashboardBtn.addEventListener('click', () => showPage('pos'));
+    backFromStockBtn.addEventListener('click', () => showPage('pos'));
+    backFromReportBtn.addEventListener('click', () => showPage('pos'));
     
     areaFilter.addEventListener('change', renderDashboard);
 
