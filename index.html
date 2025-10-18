@@ -513,10 +513,12 @@
                 return;
             }
             
-            const filtered = availableProducts.filter(product => 
-                (product['Nama Produk'] && product['Nama Produk'].toLowerCase().includes(searchTerm)) ||
-                (product['Barcode'] && product['Barcode'].toLowerCase().includes(searchTerm))
-            );
+            const filtered = availableProducts.filter(product => {
+                const productName = (product['Nama Produk'] || '').toLowerCase();
+                // Convert barcode to string to safely use .toLowerCase() and .includes()
+                const barcode = String(product['Barcode'] || '').toLowerCase();
+                return productName.includes(searchTerm) || barcode.includes(searchTerm);
+            });
             
             displayProducts(filtered);
         }
@@ -530,7 +532,8 @@
         }
 
         function addToCart(barcode) {
-            const product = availableProducts.find(p => p['Barcode'] === barcode);
+             // Use == to handle cases where barcode from sheet is a number and from DOM is a string
+            const product = availableProducts.find(p => String(p['Barcode']) == barcode);
             if (!product) {
                 showError('Produk tidak ditemukan');
                 return;
@@ -539,7 +542,7 @@
             const stockKey = `Stok Area Kasir ${currentArea}`;
             const availableStock = product[stockKey] || 0;
             
-            const existingItem = cart.find(item => item.barcode === barcode);
+            const existingItem = cart.find(item => String(item.barcode) == barcode);
             const currentQuantity = existingItem ? existingItem.quantity : 0;
             
             if (currentQuantity >= availableStock) {
@@ -551,7 +554,7 @@
                 existingItem.quantity += 1;
             } else {
                 cart.push({
-                    barcode: barcode,
+                    barcode: product['Barcode'], // Store original barcode
                     name: product['Nama Produk'],
                     price: product['Harga'] || 0,
                     quantity: 1,
@@ -564,12 +567,12 @@
         }
 
         function removeFromCart(barcode) {
-            cart = cart.filter(item => item.barcode !== barcode);
+            cart = cart.filter(item => String(item.barcode) != barcode);
             updateCartDisplay();
         }
 
         function updateCartQuantity(barcode, change) {
-            const item = cart.find(item => item.barcode === barcode);
+            const item = cart.find(item => String(item.barcode) == barcode);
             if (!item) return;
             
             const newQuantity = item.quantity + change;
@@ -678,23 +681,27 @@
 
         function processKasbonTransaction(e) {
             e.preventDefault();
+            // Read values from the form FIRST
+            const memberNumber = document.getElementById('memberNumber').value;
+            const minePermit = document.getElementById('minePermit').value;
+
+            // Now, close the modal which also resets the form
             closeKasbonModal();
-            executeTransaction();
+            
+            // Finally, execute the transaction with the saved values
+            executeTransaction({ memberNumber, minePermit });
         }
 
-        async function executeTransaction() {
+        async function executeTransaction(kasbonData = { memberNumber: null, minePermit: null }) {
             try {
-                const memberNumber = document.getElementById('memberNumber').value;
-                const minePermit = document.getElementById('minePermit').value;
-                
                 const transactionData = {
                     area: currentArea,
                     items: cart.map(item => `${item.name} x${item.quantity}`).join(', '),
                     total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
                     method: selectedPaymentMethod,
                     cart: cart, // Send full cart data for stock deduction
-                    memberNumber: selectedPaymentMethod === 'Kasbon' ? memberNumber : null,
-                    minePermit: selectedPaymentMethod === 'Kasbon' ? minePermit : null
+                    memberNumber: selectedPaymentMethod === 'Kasbon' ? kasbonData.memberNumber : null,
+                    minePermit: selectedPaymentMethod === 'Kasbon' ? kasbonData.minePermit : null
                 };
                 
                 const response = await fetch(APPS_SCRIPT_URL, {
@@ -809,7 +816,8 @@ Waktu: ${new Date().toLocaleString('id-ID')}
             
             const allProductsResponse = await fetch(`${APPS_SCRIPT_URL}?action=get_products&area=${encodeURIComponent(currentArea)}`);
             const allProductsData = await allProductsResponse.json();
-            const product = allProductsData.products.find(p => p['Barcode'] === barcode);
+            // Use == to handle cases where barcode from sheet is a number and from DOM is a string
+            const product = allProductsData.products.find(p => String(p['Barcode']) == barcode);
 
             if (!product) {
                 showError('Produk tidak ditemukan');
@@ -902,3 +910,4 @@ Waktu: ${new Date().toLocaleString('id-ID')}
     </script>
 </body>
 </html>
+
