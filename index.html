@@ -25,20 +25,20 @@
         body { box-sizing: border-box; }
         .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .loading { animation: pulse 2s infinite; }
-        .cart-item { animation: slideIn 0.3s ease-out; }
+        .cart-item-enter { animation: slideIn 0.3s ease-out; }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
-        .bounce-in { animation: bounceIn 0.5s ease-out; }
+        .modal-content { animation: bounceIn 0.5s ease-out; }
         @keyframes bounceIn {
-            0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.05); }
-            70% { transform: scale(0.9); } 100% { transform: scale(1); opacity: 1; }
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
         }
-        .product-card { transition: all 0.3s ease; }
-        .product-card:hover { transform: translateY(-2px); box-shadow: 0 15px 30px rgba(0,0,0,0.15); }
-        .search-highlight { background: linear-gradient(120deg, #a8edea 0%, #fed6e3 100%); padding: 2px 4px; border-radius: 4px; }
-        .modal-bg { background-color: rgba(0,0,0,0.5); }
-        .modal-content { animation: slideUp 0.3s ease-out; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .product-card { transition: all 0.2s ease-in-out; }
+        .product-card:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0,0,0,0.12); }
+        .search-highlight { background: linear-gradient(120deg, #a8edea 0%, #fed6e3 100%); border-radius: 3px; }
+        .payment-method-selected { box-shadow: 0 0 0 3px #0ea5e9; }
+        .modal-bg { background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
     </style>
 </head>
 <body class="bg-gray-50 min-h-full">
@@ -73,7 +73,6 @@
 
     <!-- Main Cashier Interface -->
     <div id="cashierInterface" class="hidden">
-        <!-- Header -->
         <header class="gradient-bg text-white p-4 sticky top-0 z-30">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
@@ -89,7 +88,7 @@
                     <button onclick="showReportPage()" class="bg-orange-500 hover:bg-orange-600 px-3 py-2 rounded-lg text-sm font-medium transition-all">
                         📋 Lapor
                     </button>
-                    <button onclick="clearCart()" class="bg-red-500 hover:bg-red-600 px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                    <button onclick="confirmClearCart()" class="bg-red-500 hover:bg-red-600 px-3 py-2 rounded-lg text-sm font-medium transition-all">
                         🗑️ Clear
                     </button>
                 </div>
@@ -97,7 +96,6 @@
         </header>
 
         <div class="container mx-auto p-4 space-y-4 pb-20">
-            <!-- Product Search -->
             <div class="bg-white rounded-xl p-4 card-shadow">
                 <div class="relative">
                     <input type="text" id="productSearch" placeholder="🔍 Cari produk atau scan barcode..." 
@@ -106,18 +104,13 @@
                 </div>
             </div>
 
-            <!-- Quick Product Grid -->
             <div class="bg-white rounded-xl p-4 card-shadow">
                 <h3 class="font-semibold mb-4">🛒 Produk Tersedia</h3>
-                <div id="productGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    <div id="productLoader" class="col-span-full text-center py-8">
-                         <div class="loading bg-adamart-500 w-12 h-12 rounded-full mx-auto mb-4"></div>
-                         <p class="text-gray-600">Memuat produk...</p>
-                    </div>
+                <div id="productGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <!-- Products will be loaded here -->
                 </div>
             </div>
 
-            <!-- Shopping Cart -->
             <div class="bg-white rounded-xl p-4 card-shadow">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="font-semibold">🛍️ Keranjang Belanja</h3>
@@ -128,11 +121,9 @@
                     <div class="text-center text-gray-500 py-8">
                         <div class="text-4xl mb-2">🛒</div>
                         <p>Keranjang masih kosong</p>
-                        <p class="text-sm">Pilih produk untuk memulai transaksi</p>
                     </div>
                 </div>
 
-                <!-- Cart Summary -->
                 <div id="cartSummary" class="hidden border-t pt-4">
                     <div class="flex justify-between items-center mb-4">
                         <span class="text-lg font-semibold">Total:</span>
@@ -142,16 +133,16 @@
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Metode Pembayaran:</label>
                         <div class="grid grid-cols-3 gap-2">
-                            <button onclick="selectPaymentMethod(event, 'Tunai')" class="payment-method bg-green-100 text-green-800 p-3 rounded-lg font-medium hover:bg-green-200 transition-all">💵 Tunai</button>
-                            <button onclick="selectPaymentMethod(event, 'QRIS')" class="payment-method bg-blue-100 text-blue-800 p-3 rounded-lg font-medium hover:bg-blue-200 transition-all">📱 QRIS</button>
-                            <button onclick="selectPaymentMethod(event, 'Kasbon')" class="payment-method bg-orange-100 text-orange-800 p-3 rounded-lg font-medium hover:bg-orange-200 transition-all">📝 Kasbon</button>
+                            <button onclick="selectPaymentMethod('Tunai', event.currentTarget)" class="payment-method bg-green-100 text-green-800 p-3 rounded-lg font-medium hover:bg-green-200 transition-all">💵 Tunai</button>
+                            <button onclick="selectPaymentMethod('QRIS', event.currentTarget)" class="payment-method bg-blue-100 text-blue-800 p-3 rounded-lg font-medium hover:bg-blue-200 transition-all">📱 QRIS</button>
+                            <button onclick="selectPaymentMethod('Kasbon', event.currentTarget)" class="payment-method bg-orange-100 text-orange-800 p-3 rounded-lg font-medium hover:bg-orange-200 transition-all">📝 Kasbon</button>
                         </div>
                     </div>
 
                     <div id="kasbonDetails" class="hidden mb-4 p-4 bg-orange-50 rounded-lg">
                         <div class="space-y-3">
                             <div>
-                                <label for="memberNumber" class="block text-sm font-medium text-gray-700 mb-1">Nomor Induk Anggota</label>
+                                <label for="memberNumber" class="block text-sm font-medium text-gray-700 mb-1">Nomor Induk Anggota Koperasi</label>
                                 <input type="text" id="memberNumber" placeholder="Masukkan nomor induk" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500">
                             </div>
                             <div>
@@ -181,17 +172,13 @@
                 </div>
             </div>
         </header>
+
         <div class="container mx-auto p-4 space-y-4">
             <div class="bg-white rounded-xl p-6 card-shadow">
                 <form id="reportForm" class="space-y-4">
                     <div>
-                        <label for="reportArea" class="block text-sm font-medium text-gray-700 mb-2">Area Kasir</label>
-                        <select id="reportArea" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-adamart-500" required>
-                            <option value="">Pilih Area</option>
-                            <option value="adamart 73">Adamart 73</option>
-                            <option value="adamart induksi">Adamart Induksi</option>
-                            <option value="adamart kelanis">Adamart Kelanis</option>
-                        </select>
+                        <label for="reportArea" class="block text-sm font-medium text-gray-700 mb-2">Area Pelapor</label>
+                        <select id="reportArea" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-adamart-500" required></select>
                     </div>
                     <div>
                         <label for="reportProduct" class="block text-sm font-medium text-gray-700 mb-2">Produk</label>
@@ -219,102 +206,104 @@
             </div>
         </div>
     </div>
-    
-    <!-- Modals -->
-    <div id="successModal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl p-8 max-w-md w-full text-center bounce-in">
-            <div class="text-6xl mb-4">✅</div>
-            <h3 class="text-xl font-bold mb-2">Transaksi Berhasil!</h3>
-            <p class="text-gray-600 mb-6">Pembayaran telah diproses.</p>
-            <div class="space-y-3">
-                <button onclick="sendToWhatsApp()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-all">📱 Kirim Struk ke WhatsApp</button>
-                <button onclick="closeSuccessModal()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-medium transition-all">Tutup</button>
-            </div>
+
+    <!-- Custom Modal -->
+    <div id="customModal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm text-center modal-content">
+            <div id="modalIcon" class="text-5xl mb-4"></div>
+            <h3 id="modalTitle" class="text-lg font-bold mb-2"></h3>
+            <p id="modalMessage" class="text-gray-600 mb-6"></p>
+            <div id="modalActions" class="flex justify-center space-x-3"></div>
         </div>
     </div>
 
-    <div id="confirmModal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-xl p-6 w-full max-w-sm text-center modal-content">
-            <div class="text-5xl mb-4">🤔</div>
-            <h3 id="confirmTitle" class="text-lg font-bold mb-2"></h3>
-            <p id="confirmMessage" class="text-gray-600 mb-6"></p>
-            <div class="flex space-x-3">
-                <button id="confirmCancelBtn" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg transition-colors">Batal</button>
-                <button id="confirmOkBtn" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors">Yakin</button>
-            </div>
-        </div>
-    </div>
 
     <script>
-        // Ganti URL ini dengan URL Web App Google Apps Script Anda yang sudah di-deploy
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztGJnMLgclP0ji0VnqXgI3M9nCHq2_6CU57xUQLCJmomCCqCj85I8YxcZJAMYnuE3wpA/exec';
         
         let currentArea = '';
         let availableProducts = [];
-        let allProductsForReport = []; // Cache all products for report page
+        let allProductsForReport = [];
         let cart = [];
         let selectedPaymentMethod = '';
         let lastTransaction = null;
 
-        document.addEventListener('DOMContentLoaded', () => {
-            setupProductSearch();
-            setupReportForm();
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
         });
 
-        async function fetchData(action, params = '') {
-            try {
-                const response = await fetch(`${APPS_SCRIPT_URL}?action=${action}${params}`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                if (!data.success) throw new Error(data.error || 'Gagal mengambil data dari server.');
-                return data;
-            } catch (error) {
-                console.error('Fetch Error:', error);
-                showNotification(`Tidak dapat memuat data dari server. Pastikan URL Apps Script benar.`, 'error');
-                return null;
-            }
+        function setupEventListeners() {
+            document.getElementById('productSearch').addEventListener('input', handleProductSearch);
+            document.getElementById('reportForm').addEventListener('submit', handleReportSubmit);
+            document.getElementById('reportArea').addEventListener('change', handleReportAreaChange);
+
+            document.addEventListener('click', function(e) {
+                const searchInput = document.getElementById('productSearch');
+                const searchResults = document.getElementById('searchResults');
+                if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                    searchResults.classList.add('hidden');
+                }
+            });
         }
-        
+
         async function postData(action, payload) {
             try {
                 const response = await fetch(`${APPS_SCRIPT_URL}?action=${action}`, {
                     method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(payload)
                 });
-                return { success: true };
+                if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
+                return await response.json();
             } catch (error) {
                 console.error('Post Error:', error);
-                showNotification('Gagal mengirim data ke server.', 'error');
+                showModal('Gagal Mengirim Data', `Terjadi kesalahan saat mengirim data. Error: ${error.message}`, 'error');
                 return { success: false, error: error.message };
+            }
+        }
+        
+        async function fetchData(action, params = '') {
+            try {
+                const response = await fetch(`${APPS_SCRIPT_URL}?action=${action}${params}`);
+                if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || 'Unknown server error');
+                return data;
+            } catch (error) {
+                console.error('Fetch Error:', error);
+                showModal('Gagal Terhubung', `Tidak dapat memuat data dari server. Error: ${error.message}`, 'error');
+                return null;
             }
         }
 
         async function selectArea(area) {
             currentArea = area;
             document.getElementById('currentAreaName').textContent = area;
-            showCashierInterface();
-            document.getElementById('productGrid').innerHTML = document.getElementById('productLoader').outerHTML;
+            showModal('Memuat...', `Mengambil data produk untuk ${area}...`, 'loading');
             
             const data = await fetchData('get_products', `&area=${encodeURIComponent(currentArea)}`);
+            
+            closeModal();
             if (data) {
                 availableProducts = data.products;
                 updateProductGrid();
+                showCashierInterface();
             } else {
-                 document.getElementById('productGrid').innerHTML = '<div class="col-span-full text-center text-red-500 py-8">Gagal memuat produk.</div>';
+                // Stay on area selection if failed
+                currentArea = '';
             }
         }
-        
+
         function updateProductGrid() {
             const grid = document.getElementById('productGrid');
             if (!availableProducts || availableProducts.length === 0) {
-                grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">Tidak ada produk tersedia di area ini.</div>';
+                grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">Tidak ada produk tersedia</div>';
                 return;
             }
             grid.innerHTML = availableProducts.map(p => `
-                <div class="product-card bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-adamart-500" onclick="addToCart('${p.barcode}')">
-                    <div class="text-center"><div class="text-2xl mb-2">${getProductEmoji(p.name)}</div>
+                <div class="product-card bg-white border border-gray-200 rounded-lg p-3 cursor-pointer" onclick="addToCart('${p.barcode}')">
+                    <div class="text-center">
+                        <div class="text-2xl mb-2">${getProductEmoji(p.name)}</div>
                         <h4 class="font-medium text-sm mb-1 line-clamp-2">${p.name}</h4>
                         <p class="text-adamart-600 font-bold">Rp ${p.price.toLocaleString('id-ID')}</p>
                         <p class="text-xs text-gray-500">Stok: ${p.stock}</p>
@@ -323,265 +312,393 @@
                 </div>`).join('');
         }
 
-        function getProductEmoji(name) {
-            const n = name.toLowerCase();
-            if (n.includes('mie')) return '🍜'; if (n.includes('aqua') || n.includes('air')) return '💧';
-            if (n.includes('teh')) return '🍵'; if (n.includes('kopi')) return '☕';
-            if (n.includes('beras')) return '🌾'; if (n.includes('minyak')) return '🛢️';
-            if (n.includes('gula')) return '🍯'; return '📦';
+        function getProductEmoji(productName) {
+            const name = productName.toLowerCase();
+            if (name.includes('mie') || name.includes('indomie')) return '🍜';
+            if (name.includes('aqua') || name.includes('air')) return '💧';
+            if (name.includes('teh')) return '🍵';
+            if (name.includes('kopi')) return '☕';
+            if (name.includes('beras')) return '🌾';
+            if (name.includes('minyak')) return '🛢️';
+            if (name.includes('gula')) return '🍯';
+            return '📦';
         }
 
-        function setupProductSearch() {
-            const searchInput = document.getElementById('productSearch');
+        function handleProductSearch() {
+            const query = this.value.toLowerCase().trim();
             const searchResults = document.getElementById('searchResults');
-            searchInput.addEventListener('input', function() {
-                const query = this.value.toLowerCase().trim();
-                if (query.length < 2) { searchResults.classList.add('hidden'); return; }
-                const filtered = availableProducts.filter(p => p.name.toLowerCase().includes(query) || p.barcode.includes(query));
-                if (filtered.length === 0) {
-                    searchResults.innerHTML = '<div class="p-3 text-gray-500 text-center">Produk tidak ditemukan</div>';
-                } else {
-                    searchResults.innerHTML = filtered.map(p => `
-                        <div class="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0 flex items-center justify-between" onclick="addToCart('${p.barcode}'); searchInput.value=''; searchResults.classList.add('hidden');">
-                            <div class="flex items-center space-x-3">
-                                <span class="text-xl">${getProductEmoji(p.name)}</span>
-                                <div><div class="font-medium">${p.name.replace(new RegExp(query, 'gi'), m => `<span class="search-highlight">${m}</span>`)}</div>
-                                     <div class="text-sm text-gray-500">Rp ${p.price.toLocaleString('id-ID')} • Stok: ${p.stock}</div></div>
+            
+            if (query.length < 2) {
+                searchResults.classList.add('hidden');
+                return;
+            }
+
+            const filteredProducts = availableProducts.filter(p => p.name.toLowerCase().includes(query) || p.barcode.toString().includes(query));
+
+            if (filteredProducts.length === 0) {
+                searchResults.innerHTML = '<div class="p-3 text-gray-500 text-center">Produk tidak ditemukan</div>';
+            } else {
+                searchResults.innerHTML = filteredProducts.map(p => `
+                    <div class="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0 flex items-center justify-between"
+                         onclick="addToCart('${p.barcode}'); document.getElementById('productSearch').value = ''; searchResults.classList.add('hidden');">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-xl">${getProductEmoji(p.name)}</span>
+                            <div>
+                                <div class="font-medium">${p.name.replace(new RegExp(query, 'gi'), '<span class="search-highlight">$&</span>')}</div>
+                                <div class="text-sm text-gray-500">Rp ${p.price.toLocaleString('id-ID')} • Stok: ${p.stock}</div>
                             </div>
-                            <button class="bg-adamart-100 text-adamart-800 px-3 py-1 rounded text-sm font-medium">+ Tambah</button>
-                        </div>`).join('');
-                }
-                searchResults.classList.remove('hidden');
-            });
-            document.addEventListener('click', e => {
-                if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
-                    searchResults.classList.add('hidden');
-                }
-            });
+                        </div>
+                        <button class="bg-adamart-100 text-adamart-800 px-3 py-1 rounded text-sm font-medium">+ Tambah</button>
+                    </div>`).join('');
+            }
+            searchResults.classList.remove('hidden');
         }
 
         function addToCart(barcode) {
-            const product = availableProducts.find(p => p.barcode === barcode);
+            const product = availableProducts.find(p => p.barcode.toString() === barcode.toString());
             if (!product) return;
+
             const existingItem = cart.find(item => item.barcode === barcode);
+            
             if (existingItem) {
-                if (existingItem.quantity < product.stock) { existingItem.quantity++; } 
-                else { showNotification('Stok tidak mencukupi!', 'error'); return; }
+                if (existingItem.quantity < product.stock) {
+                    existingItem.quantity++;
+                    existingItem.subtotal = existingItem.quantity * existingItem.price;
+                } else {
+                    showModal('Stok Tidak Cukup', `Stok ${product.name} hanya tersisa ${product.stock}.`, 'error');
+                    return;
+                }
             } else {
-                cart.push({ ...product, quantity: 1, maxStock: product.stock });
+                 if (product.stock > 0) {
+                    cart.push({ barcode: product.barcode, name: product.name, price: product.price, quantity: 1, subtotal: product.price, maxStock: product.stock });
+                 } else {
+                    showModal('Stok Habis', `Stok ${product.name} sudah habis.`, 'error');
+                    return;
+                 }
             }
             updateCartDisplay();
-            showNotification(`${product.name} ditambahkan`, 'success');
         }
 
         function updateCartDisplay() {
             const cartItemsContainer = document.getElementById('cartItems');
+            const cartSummary = document.getElementById('cartSummary');
+            
             if (cart.length === 0) {
-                cartItemsContainer.innerHTML = `<div class="text-center text-gray-500 py-8"><div class="text-4xl mb-2">🛒</div><p>Keranjang masih kosong</p></div>`;
-                document.getElementById('cartSummary').classList.add('hidden');
-                document.getElementById('cartItemCount').textContent = '0 item';
-                return;
-            }
-            cartItemsContainer.innerHTML = cart.map(item => `
-                <div class="cart-item flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div class="flex items-center space-x-3 flex-1">
-                        <span class="text-xl">${getProductEmoji(item.name)}</span>
-                        <div class="flex-1">
-                            <div class="font-medium">${item.name}</div>
-                            <div class="text-sm text-gray-500">Rp ${item.price.toLocaleString('id-ID')} × ${item.quantity}</div>
+                cartItemsContainer.innerHTML = '<div class="text-center text-gray-500 py-8"><div class="text-4xl mb-2">🛒</div><p>Keranjang masih kosong</p></div>';
+                cartSummary.classList.add('hidden');
+            } else {
+                cartItemsContainer.innerHTML = cart.map(item => `
+                    <div class="cart-item-enter flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center space-x-3 flex-1">
+                            <span class="text-xl">${getProductEmoji(item.name)}</span>
+                            <div class="flex-1">
+                                <div class="font-medium">${item.name}</div>
+                                <div class="text-sm text-gray-500">Rp ${item.price.toLocaleString('id-ID')} × ${item.quantity}</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <button onclick="updateCartQuantity('${item.barcode}', -1)" class="w-8 h-8 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-all">−</button>
-                        <span class="w-8 text-center font-medium">${item.quantity}</span>
-                        <button onclick="updateCartQuantity('${item.barcode}', 1)" class="w-8 h-8 bg-green-100 text-green-600 rounded-full hover:bg-green-200 transition-all" ${item.quantity >= item.maxStock ? 'disabled style="opacity:0.5"' : ''}>+</button>
-                        <div class="ml-3 font-bold text-adamart-600">Rp ${(item.price * item.quantity).toLocaleString('id-ID')}</div>
-                    </div>
-                </div>`).join('');
-            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                        <div class="flex items-center space-x-2">
+                            <button onclick="updateCartQuantity('${item.barcode}', -1)" class="w-8 h-8 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-all">−</button>
+                            <span class="w-8 text-center font-medium">${item.quantity}</span>
+                            <button onclick="updateCartQuantity('${item.barcode}', 1)" class="w-8 h-8 bg-green-100 text-green-600 rounded-full hover:bg-green-200 transition-all"
+                                ${item.quantity >= item.maxStock ? 'disabled class="opacity-50 cursor-not-allowed"' : ''}>+</button>
+                            <div class="ml-3 font-bold text-adamart-600 w-24 text-right">Rp ${item.subtotal.toLocaleString('id-ID')}</div>
+                        </div>
+                    </div>`).join('');
+                cartSummary.classList.remove('hidden');
+            }
+            updateCartTotals();
+        }
+
+        function updateCartTotals() {
+            const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
             const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
             document.getElementById('cartTotal').textContent = `Rp ${total.toLocaleString('id-ID')}`;
             document.getElementById('cartItemCount').textContent = `${itemCount} item`;
-            document.getElementById('cartSummary').classList.remove('hidden');
         }
 
         function updateCartQuantity(barcode, change) {
-            const item = cart.find(i => i.barcode === barcode);
+            const item = cart.find(item => item.barcode === barcode);
             if (!item) return;
+
             const newQuantity = item.quantity + change;
-            if (newQuantity <= 0) { cart = cart.filter(i => i.barcode !== barcode); } 
-            else if (newQuantity <= item.maxStock) { item.quantity = newQuantity; } 
-            else { showNotification('Stok tidak mencukupi!', 'error'); return; }
+
+            if (newQuantity <= 0) {
+                cart = cart.filter(item => item.barcode !== barcode);
+            } else if (newQuantity <= item.maxStock) {
+                item.quantity = newQuantity;
+                item.subtotal = item.quantity * item.price;
+            } else {
+                showModal('Stok Tidak Cukup', `Stok ${item.name} hanya tersisa ${item.maxStock}.`, 'error');
+                return;
+            }
             updateCartDisplay();
         }
 
-        function clearCart() {
+        function confirmClearCart() {
             if (cart.length === 0) return;
-            showConfirmation('Kosongkan Keranjang?', 'Yakin ingin mengosongkan keranjang?', () => {
-                cart = [];
-                resetPaymentMethod();
-                updateCartDisplay();
-                showNotification('Keranjang dikosongkan', 'info');
-            });
+            showModal(
+                'Konfirmasi', 
+                'Yakin ingin mengosongkan keranjang?', 
+                'confirm', 
+                [
+                    { text: 'Batal', class: 'bg-gray-200 hover:bg-gray-300 text-gray-800', action: closeModal },
+                    { text: 'Ya, Kosongkan', class: 'bg-red-600 hover:bg-red-700 text-white', action: clearCart }
+                ]
+            );
         }
         
-        function selectPaymentMethod(event, method) {
+        function clearCart() {
+            cart = [];
+            resetPaymentMethod();
+            updateCartDisplay();
+            closeModal();
+        }
+
+        function selectPaymentMethod(method, buttonElement) {
             selectedPaymentMethod = method;
-            document.querySelectorAll('.payment-method').forEach(btn => btn.classList.remove('ring-2', 'ring-adamart-500'));
-            event.target.classList.add('ring-2', 'ring-adamart-500');
+            document.querySelectorAll('.payment-method').forEach(btn => btn.classList.remove('payment-method-selected'));
+            buttonElement.classList.add('payment-method-selected');
+
             const kasbonDetails = document.getElementById('kasbonDetails');
             const processBtn = document.getElementById('processPaymentBtn');
+
             kasbonDetails.classList.toggle('hidden', method !== 'Kasbon');
             processBtn.textContent = method === 'Kasbon' ? 'Proses Kasbon' : `Proses Pembayaran ${method}`;
             processBtn.disabled = false;
-            processBtn.className = "w-full bg-adamart-600 hover:bg-adamart-700 text-white py-4 rounded-xl font-bold text-lg transition-all";
+            processBtn.classList.replace('bg-gray-400', 'bg-adamart-600');
+            processBtn.classList.add('hover:bg-adamart-700');
         }
 
         function resetPaymentMethod() {
             selectedPaymentMethod = '';
-            document.querySelectorAll('.payment-method').forEach(btn => btn.classList.remove('ring-2', 'ring-adamart-500'));
+            document.querySelectorAll('.payment-method').forEach(btn => btn.classList.remove('payment-method-selected'));
             document.getElementById('kasbonDetails').classList.add('hidden');
+            
             const processBtn = document.getElementById('processPaymentBtn');
             processBtn.disabled = true;
-            processBtn.className = "w-full bg-gray-400 text-white py-4 rounded-xl font-bold text-lg transition-all";
+            processBtn.classList.replace('bg-adamart-600', 'bg-gray-400');
+            processBtn.classList.remove('hover:bg-adamart-700');
             processBtn.textContent = 'Pilih Metode Pembayaran';
         }
 
         async function processPayment() {
             if (cart.length === 0 || !selectedPaymentMethod) return;
-            const btn = document.getElementById('processPaymentBtn');
-            btn.disabled = true; btn.textContent = 'Memproses...';
 
             const transactionData = {
                 area: currentArea,
-                items: cart.map(i => ({barcode: i.barcode, name: i.name, quantity: i.quantity, price: i.price, subtotal: i.price * i.quantity})),
-                total: cart.reduce((sum, i) => sum + (i.price * i.quantity), 0),
+                items: cart.map(i => ({ barcode: i.barcode, name: i.name, quantity: i.quantity, price: i.price, subtotal: i.subtotal })),
+                total: cart.reduce((sum, item) => sum + item.subtotal, 0),
                 method: selectedPaymentMethod,
-                memberNumber: document.getElementById('memberNumber').value || null,
-                minePermit: document.getElementById('minePermit').value || null,
                 timestamp: new Date().toISOString()
             };
 
-            const result = await postData('record_sale', transactionData);
-            // Asumsi berhasil karena mode no-cors
-            lastTransaction = transactionData;
-            showSuccessModal();
-            resetTransaction();
+            if (selectedPaymentMethod === 'Kasbon') {
+                const memberNumber = document.getElementById('memberNumber').value.trim();
+                const minePermit = document.getElementById('minePermit').value.trim();
+                if (!memberNumber || !minePermit) {
+                    showModal('Data Tidak Lengkap', 'Mohon lengkapi Nomor Induk Anggota dan Nomor Mine Permit untuk kasbon.', 'error');
+                    return;
+                }
+                transactionData.memberNumber = memberNumber;
+                transactionData.minePermit = minePermit;
+            }
             
-            btn.disabled = false; // Re-enable in case modal is closed without new transaction
-            resetPaymentMethod();
-        }
+            const btn = document.getElementById('processPaymentBtn');
+            btn.disabled = true;
+            btn.textContent = 'Memproses...';
+            
+            const result = await postData('record_sale', transactionData);
 
+            btn.disabled = false;
+            resetPaymentMethod();
+
+            if (result && result.success) {
+                lastTransaction = transactionData;
+                showSuccessModal();
+                resetTransaction();
+            } else {
+                 showModal('Gagal', result.error || 'Gagal memproses transaksi. Coba lagi.', 'error');
+            }
+        }
+        
         function resetTransaction() {
             cart = [];
             resetPaymentMethod();
             updateCartDisplay();
             document.getElementById('memberNumber').value = '';
             document.getElementById('minePermit').value = '';
-            selectArea(currentArea); // Refresh product list
+            if (currentArea) {
+                fetchData('get_products', `&area=${encodeURIComponent(currentArea)}`).then(data => {
+                    if (data) {
+                        availableProducts = data.products;
+                        updateProductGrid();
+                    }
+                });
+            }
         }
 
-        function showSuccessModal() { document.getElementById('successModal').classList.remove('hidden'); }
-        function closeSuccessModal() { document.getElementById('successModal').classList.add('hidden'); }
+        function showSuccessModal() {
+            showModal(
+                'Transaksi Berhasil!',
+                'Pembayaran telah diproses.',
+                'success',
+                [
+                    { text: 'Kirim Struk (WA)', class: 'bg-green-600 hover:bg-green-700 text-white', action: sendToWhatsApp },
+                    { text: 'Tutup', class: 'bg-gray-200 hover:bg-gray-300 text-gray-800', action: closeModal }
+                ]
+            );
+        }
 
         function sendToWhatsApp() {
             if (!lastTransaction) return;
-            let text = `*STRUK ADAMART*\n\nArea: ${lastTransaction.area}\nTanggal: ${new Date(lastTransaction.timestamp).toLocaleString('id-ID')}\n\n*DETAIL:*\n====================\n`;
-            lastTransaction.items.forEach(i => { text += `${i.name}\n${i.quantity} x ${i.price.toLocaleString('id-ID')} = ${(i.price*i.quantity).toLocaleString('id-ID')}\n\n`; });
-            text += `====================\n*TOTAL: Rp ${lastTransaction.total.toLocaleString('id-ID')}*\nMetode: ${lastTransaction.method}\n\nTerima kasih! 🙏`;
-            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
-            closeSuccessModal();
+            let receiptText = `*STRUK ADAMART*\n\n` +
+                `📍 Area: ${lastTransaction.area}\n` +
+                `📅 Tgl: ${new Date(lastTransaction.timestamp).toLocaleString('id-ID')}\n\n` +
+                `*DETAIL PEMBELIAN:*\n` + `=".repeat(25)}\n` +
+                lastTransaction.items.map(item => `${item.name}\n${item.quantity} x ${item.price.toLocaleString('id-ID')} = ${item.subtotal.toLocaleString('id-ID')}`).join('\n\n') +
+                `\n` + `=".repeat(25)}\n` +
+                `*TOTAL: Rp ${lastTransaction.total.toLocaleString('id-ID')}*\n` +
+                `💳 Metode: ${lastTransaction.method}\n\n`;
+
+            if (lastTransaction.method === 'Kasbon') {
+                receiptText += `*DATA KASBON:*\n` +
+                `👤 No. Induk: ${lastTransaction.memberNumber}\n` +
+                `⛏️ No. Mine Permit: ${lastTransaction.minePermit}\n\n`;
+            }
+
+            receiptText += `Terima kasih! 🙏`;
+
+            window.open(`https://wa.me/?text=${encodeURIComponent(receiptText)}`, '_blank', 'noopener,noreferrer');
+            closeModal();
         }
-        
-        function showPage(pageId) {
-            ['areaSelection', 'cashierInterface', 'reportPage'].forEach(id => {
-                document.getElementById(id).classList.toggle('hidden', id !== pageId);
-            });
-        }
-        
+
         function goBackToAreaSelection() {
             if (cart.length > 0) {
-                showConfirmation('Kembali?', 'Ada transaksi yang belum selesai. Yakin ingin kembali?', () => {
-                    cart = []; resetPaymentMethod(); updateCartDisplay(); showPage('areaSelection');
-                });
-            } else { showPage('areaSelection'); }
+                 showModal('Konfirmasi', 'Ada transaksi yang belum selesai. Yakin ingin kembali?', 'confirm', [
+                    { text: 'Batal', class: 'bg-gray-200 hover:bg-gray-300 text-gray-800', action: closeModal },
+                    { text: 'Ya, Kembali', class: 'bg-red-600 hover:bg-red-700 text-white', action: () => {
+                        currentArea = ''; cart = []; resetPaymentMethod();
+                        document.getElementById('areaSelection').classList.remove('hidden');
+                        document.getElementById('cashierInterface').classList.add('hidden');
+                        closeModal();
+                    } }
+                ]);
+            } else {
+                 currentArea = '';
+                 document.getElementById('areaSelection').classList.remove('hidden');
+                 document.getElementById('cashierInterface').classList.add('hidden');
+            }
         }
-        
-        function showReportPage() { showPage('reportPage'); if (!allProductsForReport.length) loadAllProductsForReport(); }
-        function goBackFromReport() { showPage(currentArea ? 'cashierInterface' : 'areaSelection'); }
 
-        async function loadAllProductsForReport() {
-             const data = await fetchData('get_manager_data'); // Ambil semua data produk
-             if (data && data.products) {
-                 allProductsForReport = data.products;
-             }
+        function showReportPage() {
+            document.getElementById('cashierInterface').classList.add('hidden');
+            document.getElementById('reportPage').classList.remove('hidden');
+            populateReportAreaDropdown();
+            if (allProductsForReport.length === 0) {
+                 fetchData('get_all_products').then(data => {
+                     if(data) allProductsForReport = data.products;
+                 });
+            }
         }
         
-        function setupReportForm() {
-            const areaSelect = document.getElementById('reportArea');
-            const productSelect = document.getElementById('reportProduct');
+        function populateReportAreaDropdown() {
+             const reportArea = document.getElementById('reportArea');
+             const options = ['adamart 73', 'adamart induksi', 'adamart kelanis'];
+             reportArea.innerHTML = '<option value="">Pilih Area</option>' + options.map(opt => `<option value="${opt}" ${currentArea === opt ? 'selected' : ''}>${opt}</option>`).join('');
+             if(currentArea) handleReportAreaChange(); // auto-load products if cashier area is active
+        }
+
+        function goBackFromReport() {
+            document.getElementById('reportPage').classList.add('hidden');
+            if (currentArea) {
+                document.getElementById('cashierInterface').classList.remove('hidden');
+            } else {
+                document.getElementById('areaSelection').classList.remove('hidden');
+            }
+        }
+        
+        function handleReportAreaChange() {
+            const selectedArea = document.getElementById('reportArea').value;
+            const reportProduct = document.getElementById('reportProduct');
+            reportProduct.innerHTML = '<option value="">Memuat produk...</option>';
+
+            if (selectedArea && allProductsForReport.length > 0) {
+                const stockField = `stock_${selectedArea.replace('adamart ', '')}`;
+                const productsInArea = allProductsForReport.filter(p => p[stockField] > 0);
+                reportProduct.innerHTML = '<option value="">Pilih Produk</option>' + productsInArea.map(p => 
+                    `<option value="${p.barcode}|${p.name}">${p.name} (Stok: ${p[stockField]})</option>`
+                ).join('');
+            } else {
+                reportProduct.innerHTML = '<option value="">Pilih area terlebih dahulu</option>';
+            }
+        }
+
+        async function handleReportSubmit(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitReportBtn');
+            btn.disabled = true;
+            btn.textContent = 'Mengirim...';
+
+            const productValue = document.getElementById('reportProduct').value;
+            const reportData = {
+                area: document.getElementById('reportArea').value,
+                barcode: productValue.split('|')[0],
+                name: productValue.split('|')[1],
+                quantity: parseInt(document.getElementById('reportQuantity').value),
+                reason: document.getElementById('reportReason').value,
+                timestamp: new Date().toISOString()
+            };
             
-            areaSelect.addEventListener('change', function() {
-                const selectedArea = this.value;
-                productSelect.innerHTML = '<option value="">Memuat produk...</option>';
-                if (selectedArea) {
-                    const stockField = `stock_${selectedArea.replace('adamart ', '').replace(' ', '_')}`;
-                    const productsInArea = allProductsForReport.filter(p => p[stockField] > 0);
-                    productSelect.innerHTML = '<option value="">Pilih produk</option>' + 
-                        productsInArea.map(p => `<option value="${p.barcode}|${p.name}">${p.name} (Stok: ${p[stockField]})</option>`).join('');
-                } else { productSelect.innerHTML = '<option value="">Pilih area dulu</option>'; }
+            const result = await postData('report_item', reportData);
+
+            if (result && result.success) {
+                showModal('Berhasil', 'Laporan berhasil dikirim.', 'success');
+                e.target.reset();
+                document.getElementById('reportProduct').innerHTML = '<option value="">Pilih area terlebih dahulu</option>';
+            } else {
+                showModal('Gagal', result.error || 'Gagal mengirim laporan. Coba lagi.', 'error');
+            }
+            
+            btn.disabled = false;
+            btn.textContent = '📝 Kirim Laporan';
+        }
+
+        // --- MODAL & UI FUNCTIONS ---
+        function showModal(title, message, type = 'info', actions = [{ text: 'Tutup', class: 'bg-adamart-600 hover:bg-adamart-700 text-white', action: closeModal }]) {
+            const modal = document.getElementById('customModal');
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            
+            const icon = document.getElementById('modalIcon');
+            if (type === 'success') icon.innerHTML = '✅';
+            else if (type === 'error') icon.innerHTML = '❌';
+            else if (type === 'confirm') icon.innerHTML = '🤔';
+            else if (type === 'loading') icon.innerHTML = '<div class="animate-spin text-4xl">⚙️</div>';
+            else icon.innerHTML = 'ℹ️';
+
+            const actionsContainer = document.getElementById('modalActions');
+            actionsContainer.innerHTML = '';
+            actions.forEach(act => {
+                const button = document.createElement('button');
+                button.textContent = act.text;
+                button.className = `px-6 py-2 rounded-lg font-medium transition-all ${act.class}`;
+                button.onclick = act.action;
+                actionsContainer.appendChild(button);
             });
-
-            document.getElementById('reportForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const btn = document.getElementById('submitReportBtn');
-                btn.disabled = true; btn.textContent = 'Mengirim...';
-                
-                const productValue = productSelect.value.split('|');
-                const reportData = {
-                    area: areaSelect.value, barcode: productValue[0], name: productValue[1],
-                    quantity: parseInt(document.getElementById('reportQuantity').value),
-                    reason: document.getElementById('reportReason').value,
-                    timestamp: new Date().toISOString()
-                };
-
-                const result = await postData('report_item', reportData);
-                // Asumsi berhasil
-                showNotification('Laporan berhasil dikirim!', 'success');
-                this.reset();
-                productSelect.innerHTML = '<option value="">Pilih area dulu</option>';
-                btn.disabled = false; btn.textContent = '📝 Kirim Laporan';
-            });
-        }
-        
-        function showNotification(message, type = 'info') {
-            const el = document.createElement('div');
-            el.className = `fixed top-4 right-4 z-50 p-4 rounded-lg text-white font-medium transform transition-all duration-300 translate-x-full ${
-                type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
-            }`;
-            el.textContent = message;
-            document.body.appendChild(el);
-            setTimeout(() => el.classList.remove('translate-x-full'), 100);
-            setTimeout(() => { el.classList.add('translate-x-full'); setTimeout(() => el.remove(), 300); }, 3000);
-        }
-
-        function showConfirmation(title, message, onConfirm) {
-            const modal = document.getElementById('confirmModal');
-            document.getElementById('confirmTitle').textContent = title;
-            document.getElementById('confirmMessage').textContent = message;
-            
-            const okBtn = document.getElementById('confirmOkBtn');
-            const cancelBtn = document.getElementById('confirmCancelBtn');
-
-            const close = () => modal.classList.add('hidden');
-            
-            const confirmHandler = () => { onConfirm(); close(); };
-            
-            okBtn.onclick = confirmHandler;
-            cancelBtn.onclick = close;
             
             modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('customModal').classList.add('hidden');
+        }
+        
+        function showCashierInterface() {
+            document.getElementById('areaSelection').classList.add('hidden');
+            document.getElementById('reportPage').classList.add('hidden');
+            document.getElementById('cashierInterface').classList.remove('hidden');
         }
     </script>
 </body>
 </html>
+
