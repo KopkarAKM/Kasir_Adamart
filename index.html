@@ -79,12 +79,13 @@
             font-family: 'Courier New', monospace;
             font-size: 12px;
             line-height: 1.4;
+            white-space: pre-wrap; /* Ensure line breaks are respected */
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-full">
+<body class="bg-gray-50 min-h-screen">
     <!-- Area Selection Screen -->
-    <div id="areaSelection" class="min-h-full flex items-center justify-center p-4">
+    <div id="areaSelection" class="min-h-screen flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-8 card-shadow max-w-md w-full fade-in">
             <div class="text-center mb-8">
                 <div class="text-6xl mb-4">🏪</div>
@@ -134,7 +135,7 @@
     </div>
 
     <!-- Loading Screen -->
-    <div id="loadingScreen" class="hidden min-h-full flex items-center justify-center p-4">
+    <div id="loadingScreen" class="hidden min-h-screen flex items-center justify-center p-4">
         <div class="text-center">
             <div class="loading bg-adamart-500 w-16 h-16 rounded-full mx-auto mb-4"></div>
             <h3 class="text-xl font-bold text-gray-800 mb-2">Memuat Data Produk</h3>
@@ -327,7 +328,7 @@
                 </h3>
             </div>
             
-            <div id="receiptContent" class="receipt-print bg-gray-50 p-4 rounded-lg mb-4 text-center">
+            <div id="receiptContent" class="receipt-print bg-gray-50 p-4 rounded-lg mb-4 text-left overflow-x-auto">
                 <!-- Receipt content will be generated here -->
             </div>
             
@@ -374,14 +375,9 @@
         });
 
         function setupEventListeners() {
-            // Product search
             document.getElementById('productSearch').addEventListener('input', filterProducts);
             document.getElementById('productSelect').addEventListener('change', selectProduct);
-            
-            // Report form
             document.getElementById('reportForm').addEventListener('submit', submitReport);
-            
-            // Kasbon form
             document.getElementById('kasbonForm').addEventListener('submit', processKasbonTransaction);
         }
 
@@ -410,12 +406,7 @@
 
         async function loadProducts() {
             try {
-                const response = await fetch(`${APPS_SCRIPT_URL}?action=get_products&area=${encodeURIComponent(currentArea)}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
+                const response = await fetch(`${APPS_SCRIPT_URL}?action=get_products&area=${encodeURIComponent(currentArea)}`);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -460,11 +451,16 @@
             const select = document.getElementById('reportProductSelect');
             select.innerHTML = '<option value="">Pilih produk yang akan dilaporkan...</option>';
             
-            availableProducts.forEach(product => {
-                const option = document.createElement('option');
-                option.value = product['Barcode'];
-                option.textContent = `${product['Nama Produk']} - ${product['Barcode']}`;
-                select.appendChild(option);
+            // Populate with all products, not just those in stock
+             fetch(`${APPS_SCRIPT_URL}?action=get_products&area=${encodeURIComponent(currentArea)}`).then(res => res.json()).then(data => {
+                if(data.success) {
+                    data.products.forEach(product => {
+                        const option = document.createElement('option');
+                        option.value = product['Barcode'];
+                        option.textContent = `${product['Nama Produk']} - ${product['Barcode']}`;
+                        select.appendChild(option);
+                    });
+                }
             });
         }
 
@@ -475,8 +471,8 @@
                 grid.innerHTML = `
                     <div class="col-span-full text-center py-12">
                         <div class="text-6xl mb-4">📦</div>
-                        <h3 class="text-xl font-bold text-gray-800 mb-2">Tidak Ada Produk</h3>
-                        <p class="text-gray-600">Tidak ada produk yang tersedia di area ini</p>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Produk Tidak Ditemukan</h3>
+                        <p class="text-gray-600">Coba kata kunci lain atau periksa stok</p>
                     </div>
                 `;
                 return;
@@ -564,7 +560,7 @@
             }
             
             updateCartDisplay();
-            showSuccess(`${product['Nama Produk']} ditambahkan ke keranjang`);
+            showSuccess(`${product['Nama Produk']} ditambahkan`);
         }
 
         function removeFromCart(barcode) {
@@ -647,13 +643,12 @@
         function selectPaymentMethod(method) {
             selectedPaymentMethod = method;
             
-            // Update button styles
             document.querySelectorAll('.payment-btn').forEach(btn => {
-                btn.classList.remove('ring-2', 'ring-adamart-500', 'bg-adamart-100', 'text-adamart-800');
+                btn.classList.remove('ring-2', 'ring-adamart-500');
             });
             
             const selectedBtn = document.getElementById(`pay${method}`);
-            selectedBtn.classList.add('ring-2', 'ring-adamart-500', 'bg-adamart-100', 'text-adamart-800');
+            selectedBtn.classList.add('ring-2', 'ring-adamart-500');
             
             document.getElementById('checkoutBtn').disabled = cart.length === 0;
         }
@@ -697,17 +692,14 @@
                     items: cart.map(item => `${item.name} x${item.quantity}`).join(', '),
                     total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
                     method: selectedPaymentMethod,
-                    cart: cart,
+                    cart: cart, // Send full cart data for stock deduction
                     memberNumber: selectedPaymentMethod === 'Kasbon' ? memberNumber : null,
                     minePermit: selectedPaymentMethod === 'Kasbon' ? minePermit : null
                 };
                 
-                const response = await fetch(`${APPS_SCRIPT_URL}?action=record_sale`, {
+                const response = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(transactionData)
+                    body: JSON.stringify({action: 'record_sale', data: transactionData})
                 });
                 
                 const result = await response.json();
@@ -717,13 +709,14 @@
                     showReceipt();
                     resetTransaction();
                     showSuccess('Transaksi berhasil diproses!');
+                    loadProducts(); // Refresh products to update stock display
                 } else {
                     throw new Error(result.error || 'Transaction failed');
                 }
                 
             } catch (error) {
                 console.error('Error processing transaction:', error);
-                showError('Gagal memproses transaksi. Periksa koneksi internet.');
+                showError('Gagal memproses transaksi. Periksa koneksi.');
             }
         }
 
@@ -731,34 +724,31 @@
             const receiptContent = document.getElementById('receiptContent');
             const transaction = lastTransaction;
             
-            let receipt = `
-                ================================
-                        ADAMART
-                ================================
-                Area: ${transaction.area}
-                Waktu: ${new Date().toLocaleString('id-ID')}
-                ================================
-                
-            `;
+            let receipt = `================================
+        ADAMART
+================================
+Area: ${transaction.area}
+Waktu: ${new Date().toLocaleString('id-ID')}
+================================\n\n`;
             
             transaction.cart.forEach(item => {
                 const itemTotal = item.price * item.quantity;
                 receipt += `${item.name}\n`;
-                receipt += `  ${item.quantity} x Rp ${item.price.toLocaleString('id-ID')} = Rp ${itemTotal.toLocaleString('id-ID')}\n\n`;
+                receipt += `  ${item.quantity} x ${item.price.toLocaleString('id-ID')} = ${itemTotal.toLocaleString('id-ID')}\n\n`;
             });
             
             receipt += `================================\n`;
-            receipt += `TOTAL: Rp ${transaction.total.toLocaleString('id-ID')}\n`;
-            receipt += `BAYAR: ${transaction.method}\n`;
+            receipt += `TOTAL : Rp ${transaction.total.toLocaleString('id-ID')}\n`;
+            receipt += `BAYAR : ${transaction.method}\n`;
             
             if (transaction.method === 'Kasbon') {
                 receipt += `\nDATA KASBON:\n`;
-                receipt += `No. Induk Anggota: ${transaction.memberNumber}\n`;
-                receipt += `No. Mine Permit: ${transaction.minePermit}\n`;
+                receipt += `NIA: ${transaction.memberNumber}\n`;
+                receipt += `MP: ${transaction.minePermit}\n`;
             }
             
             receipt += `================================\n`;
-            receipt += `    Terima kasih atas\n`;
+            receipt += `   Terima kasih atas\n`;
             receipt += `    kunjungan Anda!\n`;
             receipt += `================================`;
             
@@ -788,7 +778,7 @@
             cart = [];
             selectedPaymentMethod = '';
             document.querySelectorAll('.payment-btn').forEach(btn => {
-                btn.classList.remove('ring-2', 'ring-adamart-500', 'bg-adamart-100', 'text-adamart-800');
+                btn.classList.remove('ring-2', 'ring-adamart-500');
             });
             updateCartDisplay();
             document.getElementById('kasbonForm').reset();
@@ -817,7 +807,10 @@
                 return;
             }
             
-            const product = availableProducts.find(p => p['Barcode'] === barcode);
+            const allProductsResponse = await fetch(`${APPS_SCRIPT_URL}?action=get_products&area=${encodeURIComponent(currentArea)}`);
+            const allProductsData = await allProductsResponse.json();
+            const product = allProductsData.products.find(p => p['Barcode'] === barcode);
+
             if (!product) {
                 showError('Produk tidak ditemukan');
                 return;
@@ -841,12 +834,9 @@
                     notes: notes
                 };
                 
-                const response = await fetch(`${APPS_SCRIPT_URL}?action=report_item`, {
+                const response = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(reportData)
+                    body: JSON.stringify({action: 'report_item', data: reportData})
                 });
                 
                 const result = await response.json();
@@ -855,8 +845,7 @@
                     showSuccess('Laporan berhasil dikirim!');
                     document.getElementById('reportForm').reset();
                     showTransactionPage();
-                    // Refresh products to update stock
-                    await loadProducts();
+                    await loadProducts(); // Refresh products to update stock
                 } else {
                     throw new Error(result.error || 'Report failed');
                 }
@@ -911,5 +900,5 @@
             }, 4000);
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'990529a864a1f876',t:'MTc2MDc2MDM4My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
