@@ -305,8 +305,10 @@
                 showCashierInterface();
             } catch (error) {
                 console.error('Error loading products:', error);
-                alert('Gagal memuat produk dari server. Memuat data demo.');
-                loadDemoProducts();
+                alert('Gagal memuat produk dari server. Silakan cek koneksi dan coba lagi.');
+                // Fallback to empty state instead of demo data
+                availableProducts = [];
+                updateProductGrid();
                 showCashierInterface();
             }
         }
@@ -315,40 +317,24 @@
             const productGrid = document.getElementById('productGrid');
             productGrid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">Memuat produk...</div>';
             const response = await fetch(`${APPS_SCRIPT_URL}?action=get_products&area=${encodeURIComponent(currentArea)}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const data = await response.json();
             
             if (data.success) {
                 availableProducts = data.products;
                 updateProductGrid();
             } else {
-                throw new Error(data.error || 'Failed to load products');
+                throw new Error(data.error || 'Failed to load products from script');
             }
-        }
-
-        function loadDemoProducts() {
-            // Demo data for fallback
-            const allProducts = [
-                {barcode: '001', name: 'Indomie Goreng', price: 3500, stock_73: 50, stock_induksi: 30, stock_kelanis: 25},
-                {barcode: '002', name: 'Aqua 600ml', price: 3000, stock_73: 8, stock_induksi: 35, stock_kelanis: 20},
-                {barcode: '003', name: 'Teh Botol Sosro', price: 4500, stock_73: 25, stock_induksi: 5, stock_kelanis: 15},
-                {barcode: '004', name: 'Kopi Kapal Api', price: 2500, stock_73: 40, stock_induksi: 30, stock_kelanis: 7},
-            ];
-
-            const stockField = `stock_${currentArea.replace('adamart ', '').replace(' ', '_')}`;
-            availableProducts = allProducts.filter(product => product[stockField] > 0)
-                .map(product => ({
-                    ...product,
-                    stock: product[stockField]
-                }));
-            
-            updateProductGrid();
         }
 
         function updateProductGrid() {
             const grid = document.getElementById('productGrid');
             
             if (availableProducts.length === 0) {
-                grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">Tidak ada produk tersedia</div>';
+                grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">Tidak ada produk tersedia untuk area ini.</div>';
                 return;
             }
 
@@ -387,7 +373,7 @@
             searchInput.addEventListener('input', function() {
                 const query = this.value.toLowerCase().trim();
                 
-                if (query.length < 2) {
+                if (query.length < 1) {
                     searchResults.classList.add('hidden');
                     return;
                 }
@@ -613,26 +599,25 @@
             };
 
             try {
+                // IMPORTANT: Removed mode: 'no-cors' to handle response properly
                 const response = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // Important for Apps Script POST requests
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({action: 'record_sale', data: transactionData})
                 });
-                
-                // Since 'no-cors' mode doesn't allow reading the response, we'll assume success.
-                // A more robust solution might involve a different API design if response data is crucial.
-                lastTransaction = transactionData;
-                showSuccessModal();
-                resetTransaction();
+
+                const result = await response.json();
+                if (result.success) {
+                    lastTransaction = transactionData;
+                    showSuccessModal();
+                    resetTransaction();
+                } else {
+                    throw new Error(result.error || 'Gagal mencatat penjualan.');
+                }
 
             } catch (error) {
                 console.error('Error processing payment:', error);
-                alert('Terjadi kesalahan saat memproses pembayaran. Silakan coba lagi.');
-                 // For demo purposes, we will continue as if successful.
-                lastTransaction = transactionData;
-                showSuccessModal();
-                resetTransaction();
+                alert(`Terjadi kesalahan: ${error.message}. Silakan coba lagi.`);
             } finally {
                 processBtn.disabled = false;
                 resetPaymentMethod();
@@ -648,9 +633,9 @@
             document.getElementById('minePermit').value = '';
             
             if (currentArea) {
-                loadProducts().catch(() => {
-                    alert('Gagal memperbarui stok. Memuat data demo.');
-                    loadDemoProducts();
+                loadProducts().catch((error) => {
+                    console.error("Failed to reload products after transaction:", error);
+                    alert('Gagal memperbarui daftar stok. Silakan muat ulang halaman.');
                 });
             }
         }
@@ -744,6 +729,7 @@
             reportArea.addEventListener('change', async function() {
                 const selectedArea = this.value;
                 reportProduct.innerHTML = '<option value="">Memuat produk...</option>';
+                reportProduct.disabled = true;
                 
                 if (selectedArea) {
                     try {
@@ -755,11 +741,13 @@
                                     `<option value="${product.barcode}|${product.name}">${product.name} (Stok: ${product.stock})</option>`
                                 ).join('');
                         } else {
-                            throw new Error('Failed to load products for report');
+                            throw new Error('Gagal memuat produk untuk laporan');
                         }
                     } catch (error) {
                         console.error('Error loading products for report:', error);
                         reportProduct.innerHTML = '<option value="">Gagal memuat produk</option>';
+                    } finally {
+                        reportProduct.disabled = false;
                     }
                 } else {
                     reportProduct.innerHTML = '<option value="">Pilih area terlebih dahulu</option>';
@@ -778,21 +766,32 @@
                     timestamp: new Date().toISOString()
                 };
 
+                const submitBtn = e.target.querySelector('button[type="submit"]');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Mengirim...';
+
                 try {
                     const response = await fetch(APPS_SCRIPT_URL, {
                         method: 'POST',
-                        mode: 'no-cors',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({action: 'report_item', data: reportData})
                     });
-                    
-                    showNotification('Laporan berhasil dikirim!', 'success');
-                    this.reset();
-                    reportProduct.innerHTML = '<option value="">Pilih area terlebih dahulu</option>';
+
+                    const result = await response.json();
+                    if (result.success) {
+                        showNotification('Laporan berhasil dikirim!', 'success');
+                        this.reset();
+                        reportProduct.innerHTML = '<option value="">Pilih area terlebih dahulu</option>';
+                    } else {
+                        throw new Error(result.error || 'Gagal mengirim laporan.');
+                    }
 
                 } catch (error) {
                     console.error('Error submitting report:', error);
-                    showNotification('Gagal mengirim laporan. Silakan coba lagi.', 'error');
+                    showNotification(`Gagal mengirim laporan: ${error.message}`, 'error');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '📝 Kirim Laporan';
                 }
             });
         }
@@ -824,10 +823,13 @@
             setTimeout(() => {
                 notification.classList.add('translate-x-full');
                 setTimeout(() => {
-                    document.body.removeChild(notification);
+                    if (document.body.contains(notification)) {
+                        document.body.removeChild(notification);
+                    }
                 }, 300);
             }, 3000);
         }
     </script>
 </body>
 </html>
+
